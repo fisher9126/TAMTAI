@@ -77,40 +77,55 @@
   }
 
   /* ---------- weapon builders: each fills k.rh (right hand) and/or k.lh (left hand); +y is the weapon direction ---------- */
+  /* extra shapes for nicer weapons */
+  function extG(shape, depth, bevel) { const g = new T.ExtrudeGeometry(shape, { depth, bevelEnabled: !!bevel, bevelThickness: bevel || 0, bevelSize: bevel || 0, bevelSegments: 2, curveSegments: 10 }); g.translate(0, 0, -depth / 2); return g; }
+  function bladeGeo(len, wBase, wTip) { const g = new T.CylinderGeometry(wTip, wBase, len, 4, 1); g.rotateY(PI / 4); g.scale(1, 1, 0.28); return g; }
+  function wrap(g, m, y0, y1, r, n) { for (let i = 0; i < n; i++) { const t = put(g, mesh(new T.TorusGeometry(r, r * 0.22, 4, 10), m), 0, y0 + (y1 - y0) * (i + 0.5) / n, 0); t.rotation.x = PI / 2 + 0.35; } }
+  function heater(w, h) { const s = new T.Shape(); s.moveTo(-w / 2, h * 0.42); s.lineTo(w / 2, h * 0.42); s.lineTo(w / 2, h * 0.02); s.quadraticCurveTo(w / 2, -h * 0.3, 0, -h * 0.58); s.quadraticCurveTo(-w / 2, -h * 0.3, -w / 2, h * 0.02); s.lineTo(-w / 2, h * 0.42); return s; }
   const BUILD = {
     warrior(k) {
-      const steel = mat(0xd5dbe5, { metalness: 0.85, roughness: 0.25 }), gold = mat(0xd9b04c, { metalness: 0.8, roughness: 0.3 }), leather = mat(0x4a2f1c, { roughness: 0.9, metalness: 0 }), acc = accent(k), g = k.rh;
-      put(g, mesh(new T.CylinderGeometry(0.045, 0.045, 0.3, 8), leather), 0, -0.02, 0);
-      put(g, mesh(new T.SphereGeometry(0.07, 10, 8), gold), 0, -0.2, 0);
-      put(g, mesh(new T.BoxGeometry(0.58, 0.08, 0.13), gold), 0, 0.15, 0);
-      [-1, 1].forEach((s) => put(g, mesh(new T.SphereGeometry(0.06, 8, 6), gold), s * 0.29, 0.15, 0));
-      put(g, mesh(new T.BoxGeometry(0.15, 1.3, 0.045), steel), 0, 0.84, 0);
-      put(g, mesh(new T.BoxGeometry(0.04, 1.05, 0.055), acc), 0, 0.82, 0);
-      const tip = put(g, mesh(new T.ConeGeometry(0.075, 0.24, 4), steel), 0, 1.6, 0); tip.rotation.y = PI / 4; tip.scale.z = 0.35;
+      const steel = mat(0xdfe5ee, { metalness: 0.9, roughness: 0.22 }), dsteel = mat(0x8e98a8, { metalness: 0.85, roughness: 0.35 }), gold = mat(0xd9b04c, { metalness: 0.85, roughness: 0.28 }), leather = mat(0x4a2f1c, { roughness: 0.9, metalness: 0 }), acc = accent(k), g = k.rh;
+      put(g, mesh(new T.CylinderGeometry(0.042, 0.046, 0.3, 10), leather), 0, -0.02, 0); wrap(g, dsteel, -0.15, 0.12, 0.047, 4);
+      put(g, mesh(new T.SphereGeometry(0.075, 12, 10), gold), 0, -0.21, 0); put(g, mesh(new T.OctahedronGeometry(0.035), acc), 0, -0.27, 0);
+      put(g, mesh(new T.BoxGeometry(0.16, 0.1, 0.12), gold), 0, 0.15, 0);
+      [-1, 1].forEach((s) => { const q = put(g, mesh(new T.CylinderGeometry(0.03, 0.045, 0.26, 8), gold), s * 0.19, 0.18, 0); q.rotation.z = s * 1.25; put(g, mesh(new T.SphereGeometry(0.048, 8, 6), gold), s * 0.32, 0.23, 0); });
+      put(g, mesh(new T.OctahedronGeometry(0.045), acc), 0, 0.15, 0.065);
+      put(g, mesh(bladeGeo(1.28, 0.105, 0.07), steel), 0, 0.84, 0);
+      put(g, mesh(new T.BoxGeometry(0.026, 1.0, 0.05), acc), 0, 0.78, 0);
+      const tip = put(g, mesh(new T.CylinderGeometry(0.0, 0.07, 0.24, 4), steel), 0, 1.6, 0); tip.rotation.y = PI / 4; tip.scale.z = 0.28;
       glowAdd(k, g, 0, 0.9, 0.05, 1.5, false);
-      const sh = new T.Group(); k.lh.add(sh); sh.position.set(0.1, 0.15, 0.22);
-      const disc = put(sh, mesh(new T.CylinderGeometry(0.42, 0.42, 0.07, 22), mat(0x2b3a5c, { metalness: 0.5 })), 0, 0, 0); disc.rotation.x = PI / 2;
-      put(sh, mesh(new T.TorusGeometry(0.42, 0.04, 6, 24), gold), 0, 0, 0.02);
-      put(sh, mesh(new T.SphereGeometry(0.1, 10, 8), gold), 0, 0, 0.07);
-      put(sh, mesh(new T.BoxGeometry(0.09, 0.56, 0.03), acc), 0, 0, 0.045);
-      put(sh, mesh(new T.BoxGeometry(0.56, 0.09, 0.03), acc), 0, 0.02, 0.045);
+      const sh = new T.Group(); k.lh.add(sh); sh.position.set(0.1, 0.12, 0.22);
+      const rim = put(sh, mesh(extG(heater(0.84, 1.05), 0.06, 0.02), gold), 0, 0, -0.01);
+      const face = put(sh, mesh(extG(heater(0.72, 0.92), 0.07, 0.015), mat(0x24365e, { metalness: 0.35, roughness: 0.55 })), 0, 0.01, 0.02);
+      const band = put(sh, mesh(new T.BoxGeometry(0.72, 0.12, 0.03), acc), 0, 0.12, 0.07); band.rotation.z = 0;
+      const pale = put(sh, mesh(new T.BoxGeometry(0.12, 0.8, 0.03), acc), 0, -0.04, 0.07);
+      put(sh, mesh(new T.SphereGeometry(0.1, 12, 10), gold), 0, 0.12, 0.1);
+      [[-0.3, 0.38], [0.3, 0.38], [-0.33, 0.0], [0.33, 0.0], [0, -0.5]].forEach(([x, y]) => put(sh, mesh(new T.SphereGeometry(0.025, 6, 5), gold), x, y, 0.06));
+      face.castShadow = rim.castShadow = true; band.castShadow = pale.castShadow = false;
     },
     mage(k) {
-      const wood = mat(0x5a3a22, { roughness: 0.85, metalness: 0 }), gold = mat(0xd9b04c, { metalness: 0.8, roughness: 0.3 }), acc = accent(k), g = k.rh;
-      put(g, mesh(new T.CylinderGeometry(0.04, 0.052, 2.15, 8), wood), 0, 0.5, 0);
-      [-0.5, 0.2, 1.4].forEach((y) => { const r = put(g, mesh(new T.TorusGeometry(0.058, 0.014, 5, 10), gold), 0, y, 0); r.rotation.x = PI / 2; });
-      for (let i = 0; i < 4; i++) { const a = i * PI / 2, c = put(g, mesh(new T.ConeGeometry(0.035, 0.46, 5), wood), cos(a) * 0.1, 1.62, sin(a) * 0.1); c.rotation.x = sin(a) * 0.32; c.rotation.z = -cos(a) * 0.32; }
-      put(g, mesh(new T.SphereGeometry(0.14, 16, 12), acc), 0, 1.63, 0);
-      glowAdd(k, g, 0, 1.63, 0, 1.0, true);
-      for (let i = 0; i < 3; i++) { const m = put(g, mesh(new T.SphereGeometry(0.032, 8, 6), acc), 0, 1.63, 0); k.spin.push({ m, r: 0.27, ph: i * 2.09, sp: 2.6, y: 1.63 }); }
+      const wood = mat(0x5a3a22, { roughness: 0.85, metalness: 0 }), dark = mat(0x3a2414, { roughness: 0.9, metalness: 0 }), gold = mat(0xd9b04c, { metalness: 0.85, roughness: 0.28 }), acc = accent(k), g = k.rh;
+      put(g, mesh(new T.CylinderGeometry(0.038, 0.055, 2.15, 10), wood), 0, 0.5, 0);
+      const pts = []; for (let i = 0; i <= 40; i++) { const t = i / 40, a = t * PI * 7; pts.push(new T.Vector3(cos(a) * 0.05, -0.5 + t * 1.85, sin(a) * 0.05)); }
+      put(g, mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), 80, 0.014, 5, false), dark), 0, 0, 0);
+      [-0.55, 0.1, 1.33].forEach((y) => { const r = put(g, mesh(new T.TorusGeometry(0.06, 0.016, 6, 14), gold), 0, y, 0); r.rotation.x = PI / 2; });
+      for (let i = 0; i < 4; i++) { const a = i * PI / 2 + PI / 4, c = new T.CatmullRomCurve3([new T.Vector3(0, 1.4, 0), new T.Vector3(cos(a) * 0.14, 1.55, sin(a) * 0.14), new T.Vector3(cos(a) * 0.17, 1.75, sin(a) * 0.17), new T.Vector3(cos(a) * 0.06, 1.88, sin(a) * 0.06)]); put(g, mesh(new T.TubeGeometry(c, 16, 0.02, 5, false), gold), 0, 0, 0); }
+      put(g, mesh(new T.SphereGeometry(0.135, 20, 16), mat(0xffffff, { transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.1 })), 0, 1.66, 0);
+      put(g, mesh(new T.IcosahedronGeometry(0.085, 1), acc), 0, 1.66, 0);
+      glowAdd(k, g, 0, 1.66, 0, 1.1, true);
+      const rune = new T.Mesh(new T.TorusGeometry(0.27, 0.008, 4, 40), new T.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.55, blending: T.AdditiveBlending, depthWrite: false })); rune.position.y = 1.66; rune.rotation.x = PI / 2.4; g.add(rune);
+      k.tickExtra = (st) => { rune.rotation.z = st.t * 0.8; rune.visible = Q > 0; };
+      for (let i = 0; i < 3; i++) { const m = put(g, mesh(new T.SphereGeometry(0.03, 8, 6), acc), 0, 1.66, 0); k.spin.push({ m, r: 0.27, ph: i * 2.09, sp: 2.6, y: 1.66 }); }
     },
     healer(k, Hm) {
-      const wood = mat(0xe8e0c8, { roughness: 0.6, metalness: 0.1 }), gold = mat(0xe3bf5a, { metalness: 0.85, roughness: 0.25 }), acc = accent(k), g = k.rh;
-      put(g, mesh(new T.CylinderGeometry(0.04, 0.05, 1.95, 8), wood), 0, 0.4, 0);
-      put(g, mesh(new T.TorusGeometry(0.21, 0.032, 8, 24), gold), 0, 1.5, 0);
-      put(g, mesh(new T.BoxGeometry(0.07, 0.3, 0.05), acc), 0, 1.5, 0);
-      put(g, mesh(new T.BoxGeometry(0.22, 0.07, 0.05), acc), 0, 1.54, 0);
-      [-1, 1].forEach((s) => { const w = put(g, mesh(new T.ConeGeometry(0.06, 0.4, 4), gold), s * 0.3, 1.36, 0); w.rotation.z = s * 1.25; });
+      const wood = mat(0xeee6d0, { roughness: 0.55, metalness: 0.1 }), gold = mat(0xe3bf5a, { metalness: 0.88, roughness: 0.22 }), acc = accent(k), g = k.rh;
+      put(g, mesh(new T.CylinderGeometry(0.036, 0.05, 1.95, 10), wood), 0, 0.4, 0);
+      [-0.45, 0.25, 1.15].forEach((y) => { const r = put(g, mesh(new T.TorusGeometry(0.052, 0.014, 6, 14), gold), 0, y, 0); r.rotation.x = PI / 2; });
+      const cres = new T.Shape(); cres.absarc(0, 0, 0.26, 0.25 * PI, 0.75 * PI + PI, false); cres.absarc(0, 0.06, 0.2, 0.75 * PI + PI, 0.25 * PI, true);
+      put(g, mesh(extG(cres, 0.04, 0.01), gold), 0, 1.5, 0).rotation.z = PI;
+      put(g, mesh(new T.OctahedronGeometry(0.1, 0), acc), 0, 1.52, 0).scale.set(0.8, 1.4, 0.8);
+      const feather = new T.Shape(); feather.moveTo(0, 0); feather.quadraticCurveTo(0.12, 0.1, 0.42, 0.06); feather.quadraticCurveTo(0.2, -0.02, 0.3, -0.1); feather.quadraticCurveTo(0.12, -0.06, 0, 0);
+      [-1, 1].forEach((s) => { for (let j = 0; j < 3; j++) { const w = put(g, mesh(extG(feather, 0.02, 0.005), gold), s * 0.06, 1.36 - j * 0.08, 0); w.scale.set(s * (1 - j * 0.18), 1 - j * 0.15, 1); w.rotation.z = s * (0.35 + j * 0.25); } });
       glowAdd(k, g, 0, 1.5, 0, 1.2, true);
       const halo = new T.Mesh(new T.TorusGeometry(0.4, 0.022, 6, 28), new T.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.8, blending: T.AdditiveBlending, depthWrite: false }));
       halo.rotation.x = PI / 2; Hm.headG.add(halo); halo.position.y = 0.88; k.extras.push({ obj: halo, parent: Hm.headG });
@@ -139,15 +154,15 @@
       }
     },
     assassin(k) {
-      const steel = mat(0xb8c0cc, { metalness: 0.9, roughness: 0.2 }), dark = mat(0x23202c, { roughness: 0.6, metalness: 0.4 }), acc = accent(k);
+      const steel = mat(0xc3cad6, { metalness: 0.92, roughness: 0.18 }), dark = mat(0x23202c, { roughness: 0.6, metalness: 0.4 }), wrapM = mat(0x5a1f2a, { roughness: 0.9, metalness: 0 }), acc = accent(k);
+      const bl = new T.Shape(); bl.moveTo(-0.045, 0); bl.lineTo(0.045, 0); bl.quadraticCurveTo(0.075, 0.35, 0.02, 0.68); bl.quadraticCurveTo(0.0, 0.74, -0.02, 0.76); bl.quadraticCurveTo(0.0, 0.4, -0.045, 0);
       [k.rh, k.lh].forEach((g) => {
-        put(g, mesh(new T.CylinderGeometry(0.036, 0.036, 0.22, 8), dark), 0, -0.02, 0);
-        put(g, mesh(new T.SphereGeometry(0.05, 8, 6), dark), 0, -0.14, 0);
-        put(g, mesh(new T.BoxGeometry(0.22, 0.05, 0.075), dark), 0, 0.1, 0);
-        put(g, mesh(new T.BoxGeometry(0.085, 0.62, 0.03), steel), 0, 0.43, 0);
-        put(g, mesh(new T.BoxGeometry(0.022, 0.55, 0.036), acc), 0, 0.43, 0);
-        const t = put(g, mesh(new T.ConeGeometry(0.044, 0.2, 4), steel), 0, 0.84, 0); t.rotation.y = PI / 4; t.scale.z = 0.4;
-        glowAdd(k, g, 0, 0.5, 0.03, 0.8, false);
+        put(g, mesh(new T.CylinderGeometry(0.034, 0.038, 0.22, 8), wrapM), 0, -0.02, 0); wrap(g, dark, -0.12, 0.08, 0.038, 3);
+        put(g, mesh(new T.OctahedronGeometry(0.05), dark), 0, -0.16, 0);
+        const gd = put(g, mesh(new T.TorusGeometry(0.09, 0.022, 6, 12, PI), dark), 0, 0.1, 0); gd.rotation.z = PI;
+        put(g, mesh(extG(bl, 0.025, 0.008), steel), 0, 0.12, 0);
+        put(g, mesh(new T.BoxGeometry(0.014, 0.42, 0.034), acc), 0.005, 0.38, 0);
+        glowAdd(k, g, 0, 0.45, 0.03, 0.8, false);
       });
     }
   };

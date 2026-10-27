@@ -34,7 +34,16 @@
     g.font = '700 40px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,.75)'; g.strokeText(text, 256, 48); g.fillStyle = color; g.fillText(text, 256, 48);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, depthTest: false })); sp.scale.set(w || 4.4, (w || 4.4) * 0.1875, 1); sp.renderOrder = 5; return sp;
   }
+  const NPC_LOOK = { 0xf2a6c0: [0xf2c9a0, 0x8a3a22], 0x8ec5f2: [0xf6dcc4, 0xe8e0d0], 0xc48a52: [0xe6b48a, 0xb5403f], 0xd9d9e6: [0xe6b48a, 0x1f1a17], 0x7ddc8f: [0xc98f62, 0x3a2a1a], 0xffd95a: [0xf2c9a0, 0x5a3a22], 0xb48cff: [0xe6b48a, 0xdadada], 0x9a8f7a: [0xc98f62, 0x4a3626], 0x6a9a5a: [0x7fae5a, 0x1f1a17] };
   function figure(color) {
+    if (X && X.buildHumanoid) {
+      try {
+        const lk = NPC_LOOK[color] || [0xf2c9a0, 0x4a3626];
+        const Hm = X.buildHumanoid({ skin: lk[0], shirt: color, pants: 0x3a3348, hair: lk[1], beard: color === 0xc48a52 || color === 0xb48cff });
+        Hm.legs.forEach((l) => { l.rotation.x = 0; }); Hm.arms[0].rotation.z = 0.12; Hm.arms[1].rotation.z = -0.12;
+        Hm.root.userData.afNpc = true; return Hm.root;
+      } catch (err) { console.warn('[quests] figure fallback', err); }
+    }
     const g = new THREE.Group(), M = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true });
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 1.0, 8), M(color)); body.position.y = 1.15; g.add(body);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), M(0xf2c9a0)); head.position.y = 1.9; g.add(head);
