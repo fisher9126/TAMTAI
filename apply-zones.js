@@ -99,7 +99,7 @@ if (!failed) {
   if (fs.existsSync(fp)) {
     const s = fs.readFileSync(fp, 'utf8');
     let n = 0;
-    const out = s.replace(/(js\/(?:items|rules|social|combat|classes|zones)\.js)(\?v=\d+)?"/g, (m0, f, q) => { if (q === '?v=' + VER) return m0; n++; return f + '?v=' + VER + '"'; });
+    const out = s.replace(/(js\/(?:items|rules|social|combat|classes|zones)\.js)(?:\?v=(\d+))?"/g, (m0, f, q) => { if (q && Number(q) >= VER) return m0; n++; return f + '?v=' + VER + '"'; });
     if (n) { fs.writeFileSync(fp, out); console.log('[ok]   public/index.html: ?v=' + VER + ' cho ' + n + ' the script (trinh duyet se tai lai file moi)'); }
     else console.log('[bo qua] public/index.html: cac the script da co ?v=' + VER);
   }

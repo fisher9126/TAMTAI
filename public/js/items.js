@@ -16,9 +16,9 @@
     legend: ['Sao Rơi', 'Bò Tót Bất Diệt', 'Vắt Ly Tâm', 'Ánh Sao Vĩnh Cửu']
   };
 
-  const MAX_ENH = 10;
+  const MAX_ENH = 15; // AF-EQUIP: was 10 (document: +1 to +15)
   /* chance to succeed when going from level i to i+1 */
-  const ENH_CHANCE = [1, 0.95, 0.9, 0.8, 0.7, 0.55, 0.45, 0.35, 0.25, 0.15];
+  const ENH_CHANCE = [1, 0.95, 0.9, 0.8, 0.7, 0.55, 0.45, 0.35, 0.25, 0.15, 0.1, 0.07, 0.05, 0.03, 0.02];
   function enhChance(enh) { return ENH_CHANCE[Math.max(0, Math.min(MAX_ENH - 1, enh | 0))]; }
   function enhCost(it) { return Math.round((15 + it.ilvl * 6) * (1 + (it.enh || 0)) * Math.sqrt(RMULT[it.rarity])); }
   function withEnhName(name, enh) { const base = String(name || '').replace(/\s*\+\d+$/, ''); return enh > 0 ? base + ' +' + enh : base; }

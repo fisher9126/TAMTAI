@@ -127,11 +127,22 @@
       if (pr.rageOn) s.atk *= 1.25;
       if (pr.blessUntil && pr.blessUntil > Date.now()) s.atk *= 1.15;
     }
+    /* step 5+: accessories (d.xgear, flat numbers) and skill-tree passives (d.tree, fractions) are attached at run time by server/gear.js and
+       server/skilltree.js; they are never saved inside the player's save, so sanitizeSave cannot lose or forge them */
+    const xg = d.xgear, tr = d.tree;
+    if (xg) { s.atk += xg.atk || 0; s.def += xg.def || 0; s.maxHp += xg.hp || 0; s.maxMp += xg.mp || 0; s.crit += xg.crit || 0; s.spd += xg.spd || 0; }
+    /* step 11+: gloves / pants / off-hand (server/equip.js -> d.xgear2, flat), faction bonus (d.xfac, flat), mount and swimming speed */
+    const x2 = d.xgear2;
+    if (x2) { s.atk += x2.atk || 0; s.def += x2.def || 0; s.maxHp += x2.hp || 0; s.maxMp += x2.mp || 0; s.crit += x2.crit || 0; s.spd += x2.spd || 0; }
+    if (d.mountSpd) s.spd += d.mountSpd;
+    if (d.swim) s.spd -= 35;
+    if (tr) { s.atk *= 1 + (tr.atk || 0); s.def *= 1 + (tr.def || 0); s.maxHp *= 1 + (tr.hp || 0); s.maxMp *= 1 + (tr.mp || 0); s.crit += (tr.crit || 0) * 100; s.spd += (tr.spd || 0) * 100; }
     const bf = d.buffs, tNow = Date.now(); /* temporary buffs from potions and food (step 3); never saved, see server/zones.js */
     if (bf) {
       const on = (k) => (bf[k] && bf[k].until > tNow ? bf[k].v : 0);
       s.atk *= 1 + on('atk'); s.def *= 1 + on('def'); s.maxHp *= 1 + on('hp'); s.spd += on('spd');
     }
+    if (d.wear) { s.atk *= 1 - d.wear; s.def *= 1 - d.wear; } /* broken equipment (durability 0) weakens attack and armour, see server/equip.js */
     s.maxHp = Math.round(s.maxHp); s.atk = Math.round(s.atk); s.def = Math.round(s.def * 10) / 10; s.maxMp = Math.round(s.maxMp);
     s.crit = Math.round(s.crit * 10) / 10; s.spd = Math.round(s.spd * 10) / 10;
     return s;
@@ -140,15 +151,22 @@
 
   /* World layout (same numbers on both sides) */
   const WORLD = { VILLAGE: { x: 0, z: 0 }, FOREST: { x: 55, z: 50 }, ARENA: { x: 62, z: -58 }, POND: { x: -34, z: 26 }, R: 108, SPAWN: { x: 1, z: 9 },
-    SWAMP: { x: -62, z: -30 }, MINE: { x: -20, z: -72 }, FROST: { x: -55, z: 62 }, DUNGEON: { x: 6, z: 76 }, PORTAL: { x: -6, z: -24 } };
+    SWAMP: { x: -62, z: -30 }, MINE: { x: -20, z: -72 }, FROST: { x: -55, z: 62 }, DUNGEON: { x: 6, z: 76 }, PORTAL: { x: -6, z: -24 }, WBOSS: { x: 78, z: 2 },
+    /* step 11+: two more regions (the document has 6), the free-PvP ring inside the desert, and the siege fortress */
+    DESERT: { x: 22, z: -84 }, ABYSS: { x: 80, z: -34 }, PVPZ: { x: 22, z: -84, r: 12 }, FORT: { x: 36, z: -26, r: 12 }, POND_R: 9 };
   /* Zones added in step 3. `col` tints the ground, `lv` is only shown to the player. */
   const ZONES = [
     { id: 'swamp', name: 'Đầm Lầy Nấm Độc', lv: '7-12', x: WORLD.SWAMP.x, z: WORLD.SWAMP.z, r: 20, col: '#4f7a3a' },
     { id: 'mine', name: 'Mỏ Quặng Gỉ Sét', lv: '10-15', x: WORLD.MINE.x, z: WORLD.MINE.z, r: 19, col: '#7a6a58' },
     { id: 'frost', name: 'Cánh Đồng Tủ Lạnh', lv: '13-19', x: WORLD.FROST.x, z: WORLD.FROST.z, r: 17, col: '#bfe3ff' },
-    { id: 'dungeon', name: 'Hầm Ngục Tro Đen', lv: '12+', x: WORLD.DUNGEON.x, z: WORLD.DUNGEON.z, r: 17, col: '#3a2f4a' }
+    { id: 'dungeon', name: 'Hầm Ngục Tro Đen', lv: '12+', x: WORLD.DUNGEON.x, z: WORLD.DUNGEON.z, r: 17, col: '#3a2f4a' },
+    { id: 'wboss', name: 'Bãi Tế Thần', lv: '20+', x: WORLD.WBOSS.x, z: WORLD.WBOSS.z, r: 19, col: '#8a3a3a' },
+    { id: 'desert', name: 'Sa Mạc Huyết Thạch', lv: '20-27', x: WORLD.DESERT.x, z: WORLD.DESERT.z, r: 21, col: '#c9894a' },
+    { id: 'abyss', name: 'Vực Thẳm Hư Không', lv: '28-35', x: WORLD.ABYSS.x, z: WORLD.ABYSS.z, r: 18, col: '#4b2478' },
+    { id: 'fort', name: 'Pháo Đài Valdren', lv: '30+', x: WORLD.FORT.x, z: WORLD.FORT.z, r: 14, col: '#80808f' }
   ];
-  const DUNGEON = { name: 'Hầm Ngục Tro Đen', minLv: 12, dailyMax: 4, minutes: 15, waves: 3, roomR: 15 };
+  const DUNGEON = { name: 'Hầm Ngục Tro Đen', minLv: 12, dailyMax: 4, minutes: 15, waves: 3, roomR: 15, diffs: ['Thường', 'Khó', 'Ác mộng', 'Địa ngục'],
+    diffMinLv: [12, 20, 30, 40], diffHp: [1, 1.8, 3.2, 5.5], diffAtk: [1, 1.3, 1.7, 2.2], diffRew: [1, 1.8, 3, 5] };
 
   /* Monsters. Numbers only; the browser adds models. */
   const ENEMIES = {
@@ -168,7 +186,17 @@
     /* dungeon only (spawned per run, never respawn) */
     cinder: { name: 'Cinderino', look: 'teieretta', tint: 0x3a3548, scale: 1.2, lv: [14, 14], hp: 480, atk: 36, spd: 2.4, range: 1.8, aggro: 12, exp: 120, radius: 1.0, drop: 0.2, gold: [20, 36], respawn: 9999, leash: 40, bonus: 6 },
     ombra: { name: 'Gufo Ombra', look: 'gufo', tint: 0x5a3f8a, scale: 1.25, lv: [15, 15], hp: 640, atk: 46, spd: 3.1, range: 2.0, aggro: 12, exp: 160, radius: 1.0, drop: 0.25, gold: [26, 44], respawn: 9999, leash: 40, bonus: 8 },
-    dboss: { name: 'Re Tro Đen', look: 'boss', tint: 0x6a3a7a, scale: 1.1, lv: [18, 18], hp: 7000, atk: 54, spd: 2.6, range: 3.6, aggro: 24, exp: 1500, radius: 2.7, drop: 1, gold: [200, 300], respawn: 9999, leash: 40, bonus: 40, boss: true }
+    dboss: { name: 'Re Tro Đen', look: 'boss', tint: 0x6a3a7a, scale: 1.1, lv: [18, 18], hp: 7000, atk: 54, spd: 2.6, range: 3.6, aggro: 24, exp: 1500, radius: 2.7, drop: 1, gold: [200, 300], respawn: 9999, leash: 40, bonus: 40, boss: true },
+    /* world boss: spawned by server/events.js on a schedule or by an admin, never respawns by itself */
+    wboss: { name: 'Gran Lavatrice Ardente', look: 'boss', tint: 0xff7a3a, scale: 1.7, lv: [25, 25], hp: 36000, atk: 70, spd: 2.8, range: 4.2, aggro: 30, exp: 6000, radius: 4.2, drop: 1, gold: [800, 1200], respawn: 99999, leash: 70, bonus: 50, boss: true },
+    /* step 11+: desert and abyss (server/world2.js spawns them), then the raid boss (server/instances.js) */
+    scorpio: { name: 'Scorpio Fornello', look: 'gufo', tint: 0xd9a441, scale: 1.25, lv: [20, 22], hp: 900, atk: 62, spd: 2.8, range: 2.0, aggro: 10, exp: 320, radius: 1.1, drop: 0.45, gold: [40, 70], respawn: 24, leash: 28, bonus: 12 },
+    mummia: { name: 'Mummia Bendata', look: 'teieretta', tint: 0xd8cfae, scale: 1.55, lv: [23, 26], hp: 1350, atk: 78, spd: 2.2, range: 2.2, aggro: 10, exp: 460, radius: 1.2, drop: 0.5, gold: [55, 95], respawn: 26, leash: 28, bonus: 14 },
+    sethra: { name: 'Sethra, Pharaon Cát', look: 'boss', tint: 0xe0b83a, scale: 1.5, lv: [28, 28], hp: 9500, atk: 98, spd: 2.6, range: 3.6, aggro: 14, exp: 3200, radius: 2.4, drop: 1, gold: [300, 480], respawn: 200, leash: 26, bonus: 40, elite: true },
+    demone: { name: 'Demone Ombrato', look: 'gufo', tint: 0x4a2a6e, scale: 1.65, lv: [28, 31], hp: 1900, atk: 104, spd: 3.0, range: 2.2, aggro: 11, exp: 720, radius: 1.3, drop: 0.5, gold: [80, 130], respawn: 28, leash: 28, bonus: 18 },
+    drago: { name: 'Draghetto Nero', look: 'boss', tint: 0x7a1f2a, scale: 0.95, lv: [31, 34], hp: 3100, atk: 128, spd: 2.8, range: 3.0, aggro: 12, exp: 1100, radius: 1.8, drop: 0.55, gold: [110, 180], respawn: 32, leash: 28, bonus: 24 },
+    vuoto: { name: 'Il Vuoto Affamato', look: 'boss', tint: 0x2a1040, scale: 1.9, lv: [35, 35], hp: 18000, atk: 155, spd: 2.7, range: 4.0, aggro: 14, exp: 6500, radius: 3.2, drop: 1, gold: [600, 900], respawn: 240, leash: 28, bonus: 50, elite: true },
+    morvain: { name: 'Morvain, Kẻ Nuốt Sao', look: 'boss', tint: 0x5a1a8a, scale: 2.4, lv: [40, 40], hp: 60000, atk: 170, spd: 2.6, range: 4.6, aggro: 40, exp: 20000, radius: 4.4, drop: 1, gold: [2000, 3000], respawn: 99999, leash: 60, bonus: 60, boss: true }
   };
 
   const QUESTS = [
@@ -187,7 +215,8 @@
     herb: { name: 'Cỏ trà', c: '#7ddc8f' }, shell: { name: 'Vỏ ấm trà', c: '#d8c7a8' }, feather: { name: 'Lông bóng đèn', c: '#ffe27a' },
     shroom: { name: 'Nấm phát sáng', c: '#9be15d' }, venom: { name: 'Tuyến độc', c: '#b48cff' }, ore: { name: 'Quặng gỉ', c: '#c48a52' },
     coal: { name: 'Than đá', c: '#9a9aa8' }, frost: { name: 'Hoa băng', c: '#9fd3ff' }, pelt: { name: 'Da lông băng', c: '#dff0ff' },
-    gear: { name: 'Bánh răng máy giặt', c: '#f4a64a' }, core: { name: 'Lõi tro', c: '#ff7a55' }, gem: { name: 'Đá quý', c: '#ff8de1' }
+    gear: { name: 'Bánh răng máy giặt', c: '#f4a64a' }, core: { name: 'Lõi tro', c: '#ff7a55' }, gem: { name: 'Đá quý', c: '#ff8de1' },
+    sand: { name: 'Cát huyết thạch', c: '#e0a050' }, bone: { name: 'Xương cổ', c: '#e8e0c8' }, void: { name: 'Mảnh hư không', c: '#a070ff' }, ward: { name: 'Bùa bảo hộ', c: '#7dd8ff' }
   };
   const PROFS = {
     mining: { name: 'Khai khoáng', kind: 'gather', desc: 'Đào quặng, than và đá quý ở các mỏ.' },
@@ -213,7 +242,13 @@
     reQuang: [['ore', 1, 4, 6], ['coal', 1, 2, 4], ['gem', 0.8, 1, 2], ['gear', 1, 1, 2]],
     pinguino: [['pelt', 0.4, 1, 2], ['frost', 0.25, 1, 1]], orso: [['pelt', 0.5, 1, 2], ['frost', 0.35, 1, 2]],
     regina: [['pelt', 1, 3, 4], ['frost', 1, 2, 3], ['gem', 0.8, 1, 2], ['gear', 1, 1, 2]],
-    cinder: [['coal', 0.4, 1, 2], ['core', 0.12, 1, 1]], ombra: [['venom', 0.3, 1, 2], ['core', 0.18, 1, 1]], dboss: [['core', 1, 3, 4], ['gem', 1, 1, 2], ['gear', 1, 2, 3]]
+    cinder: [['coal', 0.4, 1, 2], ['core', 0.12, 1, 1]], ombra: [['venom', 0.3, 1, 2], ['core', 0.18, 1, 1]], dboss: [['core', 1, 3, 4], ['gem', 1, 1, 2], ['gear', 1, 2, 3]],
+    wboss: [['core', 1, 3, 5], ['gem', 1, 2, 3], ['gear', 1, 3, 5]],
+    scorpio: [['sand', 0.45, 1, 2], ['venom', 0.2, 1, 1]], mummia: [['bone', 0.45, 1, 2], ['sand', 0.2, 1, 1]],
+    sethra: [['sand', 1, 3, 5], ['bone', 1, 2, 4], ['gem', 1, 1, 2], ['core', 0.8, 1, 2], ['gear', 1, 2, 3]],
+    demone: [['void', 0.4, 1, 2], ['bone', 0.2, 1, 1]], drago: [['void', 0.5, 1, 2], ['core', 0.3, 1, 1], ['gem', 0.2, 1, 1]],
+    vuoto: [['void', 1, 3, 5], ['gem', 1, 2, 3], ['core', 1, 2, 3], ['gear', 1, 3, 4]],
+    morvain: [['void', 1, 8, 12], ['gem', 1, 4, 6], ['core', 1, 5, 8], ['gear', 1, 5, 8]]
   };
   /* consumables: one buff slot per kind (exp, atk, def, hp, spd); a new one replaces the old one */
   const CONS = {
@@ -242,13 +277,34 @@
     { id: 'ck_hp', prof: 'cooking', lv: 1, name: CONS.fd_hp.name, gold: 15, mats: { shell: 3, herb: 2 }, out: { kind: 'cons', id: 'fd_hp' }, xp: 8 },
     { id: 'ck_spd', prof: 'cooking', lv: 3, name: CONS.fd_spd.name, gold: 30, mats: { feather: 3, herb: 2 }, out: { kind: 'cons', id: 'fd_spd' }, xp: 14 },
     { id: 'ck_atk', prof: 'cooking', lv: 6, name: CONS.fd_atk.name, gold: 60, mats: { pelt: 2, frost: 1, coal: 1 }, out: { kind: 'cons', id: 'fd_atk' }, xp: 28 },
-    { id: 'ck_hp2', prof: 'cooking', lv: 10, name: CONS.fd_hp2.name, gold: 120, mats: { ore: 4, shroom: 3, pelt: 3 }, out: { kind: 'cons', id: 'fd_hp2' }, xp: 40 }
+    { id: 'ck_hp2', prof: 'cooking', lv: 10, name: CONS.fd_hp2.name, gold: 120, mats: { ore: 4, shroom: 3, pelt: 3 }, out: { kind: 'cons', id: 'fd_hp2' }, xp: 40 },
+    /* step 11+: protection charm (used automatically when an enhancement from +7 fails) */
+    { id: 'sm_ward', prof: 'smith', lv: 3, name: 'Bùa bảo hộ', gold: 120, mats: { core: 2, gem: 1 }, out: { kind: 'mat', id: 'ward', n: 1 }, xp: 20 },
+    { id: 'sm_ward2', prof: 'smith', lv: 8, name: 'Bùa bảo hộ x2', gold: 200, mats: { sand: 6, bone: 3 }, out: { kind: 'mat', id: 'ward', n: 2 }, xp: 36 }
   );
   /* item level of forged gear: limited by the forger's skill as well as by the character level */
   const forgeIlvl = (charLv, profLv) => Math.max(1, Math.min(charLv | 0, 4 + (profLv | 0) * 4));
 
+  /* ---------- Step 11: mounts and factions ---------- */
+  /* spd = speed bonus in the same units as boots (percent points), added only while mounted. rep = [faction, tier] needed to buy. */
+  const MOUNTS = {
+    horse: { name: 'Ngựa Ấm Trà', lv: 15, price: 800, spd: 28, col: 0x8a5a32, desc: 'Ngựa thồ hiền lành, chạy nhanh hơn 28%.' },
+    lizard: { name: 'Thằn Lằn Sa Mạc', lv: 20, price: 2500, spd: 36, col: 0x6fa84a, desc: 'Quen cát nóng, nhanh hơn 36%.' },
+    wolf: { name: 'Sói Tro Đen', lv: 30, price: 6000, spd: 44, col: 0x44444f, desc: 'Sói bị tro nhuộm đen, nhanh hơn 44%.' },
+    warhorse: { name: 'Chiến Mã Hiệp Sĩ', lv: 25, price: 9000, spd: 48, col: 0xe8e8f0, rep: ['knight', 4], desc: 'Chỉ bán cho người Tôn kính của Hội Hiệp Sĩ, nhanh hơn 48%.' },
+    ashbeast: { name: 'Ác Thú Tro Tàn', lv: 25, price: 9000, spd: 48, col: 0x2a1a3a, rep: ['cult', 4], desc: 'Chỉ bán cho người Tôn kính của Giáo phái Tro Tàn, nhanh hơn 48%.' }
+  };
+  /* four factions: reputation tiers by points; the rival loses a share of what the other gains (see server/faction.js) */
+  const FACTIONS = {
+    knight: { name: 'Hội Hiệp Sĩ', col: '#7fb2ff', rival: 'cult', desc: 'Giữ trật tự, săn quái ở vùng ngoài thành.' },
+    mage: { name: 'Hội Pháp Sư', col: '#c58cff', rival: 'cult', desc: 'Thanh tẩy tro, cần nguyên liệu ma thuật.' },
+    trader: { name: 'Liên minh Thương nhân', col: '#ffd95a', rival: null, desc: 'Kiếm lời từ hỗn loạn, thích vàng và nguyên liệu.' },
+    cult: { name: 'Giáo phái Tro Tàn', col: '#ff7a55', rival: 'knight', desc: 'Thu gom mảnh sao, đối địch Hội Hiệp Sĩ.' }
+  };
+  const REP_TIERS = [{ id: 'hostile', name: 'Thù địch', min: -99999 }, { id: 'neutral', name: 'Trung lập', min: 0 }, { id: 'friendly', name: 'Thân thiện', min: 500 }, { id: 'honored', name: 'Kính trọng', min: 2000 }, { id: 'exalted', name: 'Tôn kính', min: 6000 }];
+
   const api = { expNeed, playerStats, pointsTotal, APPEARANCE, RACES, STATS, SKILLS, CLASSES, ADV, POINTS_PER_LEVEL, ADV_LEVEL,
-    WORLD, ZONES, DUNGEON, ENEMIES, ATTACKS, QUESTS, MAX_LEVEL: 60, INV_SIZE: 24, POTION_CD: 8,
-    MATS, PROFS, PROF_MAX, profNeed, NODES, MAT_DROPS, CONS, BUFF_NAME, RECIPES, forgeIlvl };
+    WORLD, ZONES, DUNGEON, ENEMIES, ATTACKS, QUESTS, MAX_LEVEL: 60, INV_SIZE: 42, POTION_CD: 8,
+    MATS, PROFS, PROF_MAX, profNeed, NODES, MAT_DROPS, CONS, BUFF_NAME, RECIPES, forgeIlvl, MOUNTS, FACTIONS, REP_TIERS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.AF_RULES = api;
 })(typeof window !== 'undefined' ? window : globalThis);

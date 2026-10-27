@@ -7,7 +7,7 @@
   if (!H || !X || !RU || !THREE || !RU.ZONES || !RU.RECIPES) { console.warn('[zones] thiếu AF_CH/AF_CHX/AF_RULES.ZONES, bỏ qua (hãy chạy apply-zones.js và chép rules.js mới)'); return; }
   const esc = H.esc, send = (m) => H.NET.send(m), W = RU.WORLD, DUN = RU.DUNGEON, S = X.scene;
   const num = (n) => Number(n || 0).toLocaleString('vi-VN');
-  const Z = { prof: {}, mats: {}, cons: {}, buffs: {}, dun: null, run: null, open: false, tab: 'prof', filter: 'smith' };
+  const Z = { prof: {}, mats: {}, cons: {}, buffs: {}, dun: null, run: null, open: false, tab: 'prof', filter: 'smith', diff: 0 };
   window.AF_ZONES = Z;
   const rng = (seed) => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.85, flatShading: true }, o || {}));
@@ -169,7 +169,10 @@
   #afZ .mats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   #afZ .mat{padding:6px 8px;border-radius:9px;background:rgba(255,255,255,.06)}
   #afZDun{position:fixed;left:50%;top:112px;transform:translateX(-50%);z-index:20;min-width:260px;padding:8px 14px;border-radius:10px;background:rgba(30,18,52,.92);border:2px solid #9a6bff;color:#f1ebde;font:600 13px system-ui,sans-serif;text-align:center;pointer-events:none}
-  #afZBuff{position:fixed;left:16px;top:146px;z-index:20;display:flex;gap:6px;flex-wrap:wrap;max-width:260px;pointer-events:none}
+  #afZBuff{position:fixed;left:16px;top:146px;z-index:20;display:flex;gap:6px;flex-wrap:wrap;max-width:300px;pointer-events:none}
+  #afZBoss{position:fixed;left:50%;top:44px;transform:translateX(-50%);z-index:21;min-width:300px;padding:8px 14px;border-radius:10px;background:rgba(40,14,10,.92);border:2px solid #ff7a3a;color:#f1ebde;font:600 13px system-ui,sans-serif;text-align:center;pointer-events:none}
+  #afZBoss .b{height:9px;border-radius:5px;background:rgba(0,0,0,.5);overflow:hidden;margin:5px 0 3px}#afZBoss .b i{display:block;height:100%;background:#ff5a3a}
+  #afZBoss[hidden]{display:none}
   #afZBuff span{padding:2px 8px;border-radius:999px;background:rgba(13,18,31,.85);border:1px solid #ffd96a;color:#ffd96a;font:700 12px system-ui,sans-serif}
   #afZPrompt[hidden],#afZBtn[hidden],#afZ[hidden],#afZDun[hidden],#afZBuff[hidden]{display:none}`;
   document.head.appendChild(css);
@@ -178,7 +181,8 @@
   const panel = document.createElement('div'); panel.id = 'afZ'; panel.hidden = true;
   const dunEl = document.createElement('div'); dunEl.id = 'afZDun'; dunEl.hidden = true;
   const buffEl = document.createElement('div'); buffEl.id = 'afZBuff'; buffEl.hidden = true;
-  document.body.append(prompt, btn, panel, dunEl, buffEl);
+  const bossEl = document.createElement('div'); bossEl.id = 'afZBoss'; bossEl.hidden = true;
+  document.body.append(prompt, btn, panel, dunEl, buffEl, bossEl);
   ['keydown', 'keyup'].forEach((ev) => panel.addEventListener(ev, (e) => e.stopPropagation()));
   [panel, btn].forEach((el) => ['pointerdown', 'mousedown'].forEach((ev) => el.addEventListener(ev, (e) => e.stopPropagation())));
 
@@ -206,7 +210,7 @@
   function interact() {
     if (!target) return;
     if (target.kind === 'node') send({ t: 'zone', op: 'gather', id: target.node.id });
-    else send({ t: 'zone', op: 'dun', act: 'enter' });
+    else send({ t: 'zone', op: 'dun', act: 'enter', diff: Z.diff | 0 });
   }
 
   /* ---------- panel (P) ---------- */
@@ -216,7 +220,7 @@
     let okMats = true;
     const need = Object.keys(rc.mats).map((k) => { const have = Z.mats[k] || 0, ok = have >= rc.mats[k]; if (!ok) okMats = false; return '<span style="color:' + (ok ? '#9be15d' : '#ff8a78') + '">' + RU.MATS[k].name + ' ' + have + '/' + rc.mats[k] + '</span>'; }).join(' · ');
     const outTxt = rc.out.kind === 'gear' ? 'Trang bị ' + window.AF_ITEMS.RNAME[rc.out.rarity] + ', cấp vật phẩm ' + RU.forgeIlvl((X.P && X.P.level) || 1, lv)
-      : rc.out.kind === 'potion' ? '+' + rc.out.n + ' bình máu' : RU.CONS[rc.out.id].desc;
+      : rc.out.kind === 'potion' ? '+' + rc.out.n + ' bình máu' : rc.out.kind === 'mat' ? '+' + rc.out.n + ' ' + RU.MATS[rc.out.id].name + ' (tự dùng khi cường hóa từ +7 thất bại)' : RU.CONS[rc.out.id].desc;
     const can = okLv && okMats && gold >= rc.gold;
     return '<div class="row" style="opacity:' + (okLv ? 1 : 0.55) + '"><span><b>' + esc(rc.name) + '</b> <small class="mut">cấp ' + rc.lv + ' · ' + rc.gold + ' vàng</small><br><small class="mut">' + esc(outTxt) + '</small><br><small>' + need + '</small></span>' +
       '<button class="afz" data-a="craft" data-id="' + rc.id + '"' + (can ? '' : ' disabled') + '>Chế</button></div>';
@@ -245,7 +249,7 @@
     } else {
       const d = Z.dun || {};
       h += '<div class="row" style="display:block"><b>' + DUN.name + '</b><br><small class="mut">Cổng ở phía Nam làng (vòng sáng tím). Cấp ' + DUN.minLv + '+, tối đa 4 người trong tổ đội, ' + DUN.waves + ' đợt (đợt cuối là boss Re Tro Đen), giới hạn ' + DUN.minutes + ' phút. Đội đông thì quái mạnh hơn. Đội trưởng nhấn E ở cổng để mở, thành viên đứng gần cổng sẽ vào cùng.</small></div>';
-      h += '<div class="row"><span>Lượt hôm nay còn <b>' + (d.left != null ? d.left : '?') + '/' + (d.max || DUN.dailyMax) + '</b> · Đã thắng ' + (d.clears || 0) + ' lần</span></div>';
+      h += '<div class="row"><span>Lượt hôm nay còn <b>' + (d.left != null ? d.left : '?') + '/' + (d.max || DUN.dailyMax) + '</b> · Đã thắng ' + (d.clears || 0) + ' lần · Độ khó đang chọn: <b>' + DUN.diffs[Z.diff | 0] + '</b> <small class="mut">(đổi ở bảng Thử thách, phím T)</small></span></div>';
       h += '<div class="row"><span class="mut">Phần thưởng: kinh nghiệm, vàng, bình máu, nguyên liệu hiếm (Lõi tro, Đá quý). Boss rơi trang bị Sử thi / Huyền thoại.</span></div>';
       h += '<div class="row">' + (Z.run ? '<button class="afz" data-a="enter">Quay lại hầm ngục</button><button class="afz g" data-a="leave">Rời khỏi lượt này</button>' : '<button class="afz" data-a="enter">Vào hầm ngục</button><span class="mut">phải đứng gần cổng</span>') + '</div>';
     }
@@ -258,7 +262,7 @@
     else if (a === 'filter') { Z.filter = b.dataset.v; render(); }
     else if (a === 'craft') send({ t: 'zone', op: 'craft', id: b.dataset.id });
     else if (a === 'use') send({ t: 'zone', op: 'use', id: b.dataset.id });
-    else if (a === 'enter') send({ t: 'zone', op: 'dun', act: 'enter' });
+    else if (a === 'enter') send({ t: 'zone', op: 'dun', act: 'enter', diff: Z.diff | 0 });
     else if (a === 'leave') { if (confirm('Rời khỏi hầm ngục? Bạn sẽ không vào lại được lượt này.')) send({ t: 'zone', op: 'dun', act: 'leave' }); }
   });
   function toggle(v) { Z.open = v === undefined ? !Z.open : v; panel.hidden = !Z.open; if (Z.open) { send({ t: 'zone', op: 'info' }); render(); } }
@@ -273,15 +277,29 @@
 
   /* ---------- HUD: buffs, dungeon, zone toasts ---------- */
   function paintBuffs() {
-    const t = Date.now(), live = Object.keys(Z.buffs).filter((k) => Z.buffs[k].until > t);
-    buffEl.hidden = !live.length || !H.isRunning();
-    buffEl.innerHTML = live.map((k) => '<span>' + RU.BUFF_NAME[k] + ' ' + (k === 'spd' ? '+' + Z.buffs[k].v + '%' : '+' + Math.round(Z.buffs[k].v * 100) + '%') + ' · ' + Math.ceil((Z.buffs[k].until - t) / 1000) + 's</span>').join('');
+    const t = Date.now(), live = Object.keys(Z.buffs).filter((k) => Z.buffs[k].until > t), evs = (Z.events || []).filter((e) => e.until > t);
+    buffEl.hidden = (!live.length && !evs.length) || !H.isRunning();
+    const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); };
+    buffEl.innerHTML = evs.map((e) => '<span style="border-color:#7ddc8f;color:#7ddc8f">Sự kiện: ' + esc(e.name) + ' ' + (e.type === 'shop' ? 'giá ' + Math.round(e.mult * 100) + '%' : 'x' + e.mult) + ' · ' + mmss(e.until - t) + '</span>').join('') +
+      live.map((k) => '<span>' + RU.BUFF_NAME[k] + ' ' + (k === 'spd' ? '+' + Z.buffs[k].v + '%' : '+' + Math.round(Z.buffs[k].v * 100) + '%') + ' · ' + Math.ceil((Z.buffs[k].until - t) / 1000) + 's</span>').join('');
   }
   setInterval(paintBuffs, 1000);
+  /* world boss banner: name, health, time left and which way to go */
+  const DIRS = ['Bắc', 'Đông Bắc', 'Đông', 'Đông Nam', 'Nam', 'Tây Nam', 'Tây', 'Tây Bắc'];
+  Z.boss = null;
+  function paintBoss() {
+    const b = Z.boss; bossEl.hidden = !b || !H.isRunning(); if (!b) return;
+    const R = H.R, dx = b.x - R.x, dz = b.z - R.z, d = Math.round(Math.hypot(dx, dz)), dir = DIRS[(Math.round(Math.atan2(dx, dz) / (Math.PI / 4)) + 8) % 8];
+    const left = Math.max(0, Math.round((b.until - Date.now()) / 1000));
+    bossEl.innerHTML = '<b>' + esc(b.name) + '</b> · ' + (b.dead ? 'Đã bị hạ!' : 'còn ' + Math.floor(left / 60) + ':' + ('0' + (left % 60)).slice(-2)) +
+      '<div class="b"><i style="width:' + Math.max(0, Math.min(100, b.hp / Math.max(1, b.maxHp) * 100)) + '%"></i></div>' +
+      '<small>' + (b.dead ? 'Phần thưởng đã gửi vào hộp thư' : 'Bãi Tế Thần · ' + dir + ' · cách ' + d + ' m · ' + num(Math.round(b.hp)) + ' / ' + num(b.maxHp)) + '</small>';
+  }
+  setInterval(paintBoss, 500);
   function paintDun() {
     const r = Z.run; dunEl.hidden = !r || !H.isRunning(); if (!r) return;
     const mm = Math.floor(r.secs / 60), ss = ('0' + (r.secs % 60)).slice(-2);
-    dunEl.innerHTML = '<b>' + esc(DUN.name) + '</b> · ' + (r.clear ? 'Hoàn thành! Sắp ra khỏi hầm ngục' : r.wave === 0 || r.wait ? 'Chuẩn bị... ' + r.wait + 's' : 'Đợt ' + r.wave + '/' + r.waves + ' · còn ' + r.left + ' quái') + ' · ' + mm + ':' + ss;
+    dunEl.innerHTML = '<b>' + esc(DUN.name) + (r.diff && DUN.diffs ? ' (' + DUN.diffs[r.diff] + ')' : '') + '</b> · ' + (r.clear ? 'Hoàn thành! Sắp ra khỏi hầm ngục' : r.wave === 0 || r.wait ? 'Chuẩn bị... ' + r.wait + 's' : 'Đợt ' + r.wave + '/' + r.waves + ' · còn ' + r.left + ' quái') + ' · ' + mm + ':' + ss;
   }
   let lastZone = null;
   setInterval(() => {
@@ -320,9 +338,19 @@
         if (m.up) H.toast('<b>' + RU.PROFS[m.prof].name + '</b> lên cấp ' + m.up + '!', true);
         return true;
       case 'erem': (m.ids || []).forEach((id) => { if (window.AF_ENEMIES) window.AF_ENEMIES.remove(id); }); return true;
+      case 'event': { const t = Date.now(); Z.events = (m.list || []).map((e) => ({ type: e.type, name: e.name, mult: e.mult, until: t + e.left * 1000 })); paintBuffs(); return true; }
+      case 'wboss':
+        if (m.st === 'spawn') H.toast('<b>Boss thế giới xuất hiện!</b> Bãi Tế Thần, phía Đông', true);
+        if (m.st === 'spawn' || m.st === 'hud') Z.boss = { name: m.name, hp: m.hp, maxHp: m.maxHp, x: m.x, z: m.z, until: Date.now() + m.left * 1000, dead: false };
+        else if (m.st === 'dead') {
+          Z.boss = Object.assign(Z.boss || { name: m.name, maxHp: m.maxHp, x: m.x, z: m.z, until: Date.now() }, { hp: 0, dead: true });
+          H.toast('<b>Boss thế giới đã bị hạ!</b>', true);
+          if (m.top && m.top.length) H.chatLine('sys', 'Sát thương cao nhất: ' + m.top.map((x, i) => (i + 1) + '. ' + esc(x.name) + ' (' + num(x.dmg) + ')').join(' · '));
+        } else Z.boss = null;
+        paintBoss(); return true;
       case 'dun':
         if (m.st === 'start') { Z.run = { wave: 0, waves: DUN.waves, left: 0, secs: DUN.minutes * 60, wait: 8, clear: false }; H.toast('<b>' + esc(m.name) + '</b>: đội ' + m.n + ' người, ' + m.minutes + ' phút!', true); paintDun(); }
-        else if (m.st === 'hud') { Z.run = { wave: m.wave, waves: m.waves, left: m.left, secs: m.secs, wait: m.wait, clear: m.clear }; paintDun(); }
+        else if (m.st === 'hud') { Z.run = { wave: m.wave, waves: m.waves, left: m.left, secs: m.secs, wait: m.wait, clear: m.clear, diff: m.diff | 0 }; paintDun(); }
         else if (m.st === 'wave') H.toast(m.boss ? '<b>Boss Re Tro Đen xuất hiện!</b>' : 'Đợt <b>' + m.wave + '/' + m.waves + '</b>', true);
         else if (m.st === 'end') {
           if (m.win) {
@@ -332,7 +360,15 @@
           } else { H.toast('Hầm ngục thất bại. ' + esc(m.reason || ''), true); Z.run = null; paintDun(); }
         } else if (m.st === 'left') { Z.run = null; paintDun(); }
         return true;
-      default: return false;
+      default: {
+        /* other step modules (explore, quests, ...) register window.AF_<NAME>.onNet; the first one that handles the message wins */
+        const mods = ['AF_EXPLORE', 'AF_QUESTS', 'AF_GEAR', 'AF_SKILLTREE', 'AF_AUCTION', 'AF_ARENA', 'AF_EQUIP', 'AF_WORLD2', 'AF_MOVE', 'AF_INSTANCES', 'AF_FACTION', 'AF_PVP', 'AF_TEAM'];
+        for (let i = 0; i < mods.length; i++) {
+          const mo = window[mods[i]];
+          if (mo && typeof mo.onNet === 'function') { try { if (mo.onNet(m)) return true; } catch (err) { console.error(mods[i], err); } }
+        }
+        return false;
+      }
     }
   };
 })();

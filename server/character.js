@@ -32,7 +32,7 @@ function saveProf(p) {
   const pr = p.prof; const o = { race: pr.race, gender: pr.gender, cls: pr.cls, adv: pr.adv, app: pr.app, alloc: pr.alloc };
   db.run('INSERT INTO char_profile (user_id, data) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data', p.id, JSON.stringify(o));
 }
-const appOf = (pr) => ({ race: pr.race, gender: pr.gender, skin: pr.app.skin, hs: pr.app.hs, hair: pr.app.hair, shirt: pr.app.shirt });
+const appOf = (pr) => ({ cls: pr.cls, race: pr.race, gender: pr.gender, skin: pr.app.skin, hs: pr.app.hs, hair: pr.app.hair, shirt: pr.app.shirt });
 function view(p) {
   const pr = p.prof;
   return { race: pr.race, gender: pr.gender, cls: pr.cls, adv: pr.adv, app: pr.app, alloc: pr.alloc, points: pointsLeft(p) };

@@ -7,7 +7,7 @@
   const H = window.AF_CH;
   if (!H) { console.warn('[combat] thiếu AF_CH, bỏ qua (hãy chạy apply-combat.js)'); return; }
   const esc = H.esc;
-  const S = { stunUntil: 0, slowUntil: 0, duelWith: null, duelName: '', oppHp: 0, oppMax: 0, fx: [], startAt: 0 };
+  const S = { stunUntil: 0, slowUntil: 0, duelWith: null, inDuel: false, duelName: '', oppHp: 0, oppMax: 0, fx: [], startAt: 0 }; // inDuel: real duel (public/js/pvp.js also fills duelWith with the nearest enemy player so the existing hit message carries it)
   const FXN = { burn: ['Bỏng', '#ff8a4c'], poison: ['Độc', '#9be15d'], slow: ['Chậm', '#6fc1ff'], stun: ['Choáng', '#ffd95a'], guard: ['Giáp sắt', '#b8c4e6'], hide: ['Ẩn thân', '#b48cff'], bless: ['Phước', '#ffe27a'] };
   const send = (m) => H.NET.send(m);
 
@@ -27,7 +27,7 @@
     const t = H.time; const live = S.fx.filter((f) => f.until > t);
     fxEl.hidden = !live.length || !H.isRunning();
     fxEl.innerHTML = live.map((f) => { const n = FXN[f.id] || [f.id, '#fff']; return '<span style="color:' + n[1] + '">' + n[0] + ' ' + Math.ceil(f.until - t) + 's</span>'; }).join('');
-    if (S.duelWith != null) {
+    if (S.inDuel) {
       const wait = Math.ceil(S.startAt - t);
       duelEl.hidden = false;
       duelEl.innerHTML = 'Thách đấu với <b>' + esc(S.duelName) + '</b>' + (wait > 0 ? ' · bắt đầu sau ' + wait + 's' : '') +
@@ -69,9 +69,9 @@
         S.fx.forEach((f) => { if (f.id === 'stun') S.stunUntil = f.until; if (f.id === 'slow') S.slowUntil = f.until; });
         renderFx(); return true; }
       case 'duel':
-        if (m.st === 'start') { S.duelWith = m.with; S.duelName = m.name; S.oppHp = m.oppHp; S.oppMax = m.oppMax; S.startAt = H.time + m.startIn; H.toast('<b>Thách đấu</b> với ' + esc(m.name) + '! Chuẩn bị...'); }
+        if (m.st === 'start') { S.duelWith = m.with; S.inDuel = true; S.duelName = m.name; S.oppHp = m.oppHp; S.oppMax = m.oppMax; S.startAt = H.time + m.startIn; H.toast('<b>Thách đấu</b> với ' + esc(m.name) + '! Chuẩn bị...'); }
         else if (m.st === 'hp') { S.oppHp = m.oppHp; S.oppMax = m.oppMax; }
-        else if (m.st === 'end') { S.duelWith = null; H.toast(m.draw ? 'Trận đấu hòa' : m.win ? 'Bạn <b>thắng</b> trận đấu!' : 'Bạn <b>thua</b> trận đấu.', true); }
+        else if (m.st === 'end') { S.duelWith = null; S.inDuel = false; H.toast(m.draw ? 'Trận đấu hòa' : m.win ? 'Bạn <b>thắng</b> trận đấu!' : 'Bạn <b>thua</b> trận đấu.', true); }
         else if (m.st === 'invite') H.toast('<b>' + esc(m.from) + '</b> thách đấu bạn! Gõ <b>/duel ok</b> để nhận.');
         renderFx(); return true;
       default: return false;

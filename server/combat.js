@@ -7,6 +7,8 @@ const rules = require('../public/js/rules.js');
 const character = require('./character');
 
 let C = null; // { online, send, sys }
+let pvp = null; // step 11: server/pvp.js (free PvP zone, battleground, siege); optional
+try { pvp = require('./pvp'); } catch (e) { pvp = null; }
 const now = () => Date.now();
 const rand = (a, b) => a + Math.random() * (b - a);
 const stats = (p) => rules.playerStats(p.data);
@@ -90,6 +92,7 @@ function applyDamage(p, dmg, kind, extra, attacker) {
   if (p.hp > 0) return;
   if (d) return duelEnd(d, attacker || otherOf(d, p), 'hạ gục');
   p.dead = true; p.fx = new Map(); p.hidden = false; sendFx(p);
+  if (attacker && pvp && pvp.pvpDeath) { try { pvp.pvpDeath(attacker, p); } catch (err) { console.error('pvp death', err.message); } }
 }
 /* A monster (e) or a duel opponent (attacker) hits player p with `raw` damage before defence. */
 function hurt(p, raw, extra, e, attacker) {
@@ -164,11 +167,28 @@ function onHit(p, m, doEnemyHit) {
   const eReady = ids.length > 0 && (p.cd[kind] || 0) <= t + 80;
   const d = duels.get(p.id);
   const dReady = !!d && t >= d.startAt && pids.length > 0 && (p.cd['d_' + kind] || 0) <= t + 80;
-  if (!eReady && !dReady) return;
+  const vReady = !d && !!pvp && !!pvp.pvpActive && pids.length > 0 && (p.cd['v_' + kind] || 0) <= t + 80 && pvp.pvpActive(p);
+  if (!eReady && !dReady && !vReady) return;
   if (a.mp) { if (p.mp < a.mp) return; p.mp -= a.mp; sendVit(p); }
   character.reveal(p);
   if (eReady) { doEnemyHit(ids); character.afterHit(p, kind, ids); }
   if (dReady) duelHit(p, d, m, kind, a);
+  if (vReady) pvpHit(p, pids, m, kind, a);
+}
+
+/* free PvP / battleground / siege: the same damage as a duel, but the targets are checked by server/pvp.js */
+function pvpHit(p, pids, m, kind, a) {
+  let hit = 0; const st = stats(p);
+  pids.slice(0, 3).forEach((id) => {
+    const o = C.online.get(Number(id)); if (!o || o.id === p.id || o.hp <= 0) return;
+    if (Math.hypot(p.x - o.x, p.z - o.z) > a.reach + 0.8 + 1.5) return;
+    if (!pvp.canHit(p, o)) return;
+    const mult = a.mult[Math.max(0, Math.min(a.mult.length - 1, m.combo | 0))];
+    const crit = Math.random() * 100 < st.crit;
+    hurt(o, st.atk * mult * rand(0.9, 1.1) * (crit ? 1.8 : 1) * PVP_SCALE, { label: crit ? 'Chí mạng!' : null }, null, p);
+    hit++;
+  });
+  if (hit) p.cd['v_' + kind] = now() + a.cd * 1000;
 }
 
 /* ---------- duels ---------- */

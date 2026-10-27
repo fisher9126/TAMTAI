@@ -16,12 +16,29 @@ const W = rules.WORLD, DUN = Object.assign({}, rules.DUNGEON, { x0: rules.WORLD.
 const RC = new Map(rules.RECIPES.map((r) => [r.id, r]));
 const dayKey = () => new Date(now() + 7 * 3600e3).toISOString().slice(0, 10);
 const sys = (p, t) => C.sys(p, t);
+const evMult = (k) => { try { return require('./events')[k](); } catch (e) { return 1; } }; // admin events (x2 gathering, ...); 1 when events.js is not installed
 function thr(p, k, ms) { p.zThr = p.zThr || {}; const t = now(); if ((p.zThr[k] || 0) > t) return false; p.zThr[k] = t + ms; return true; }
+
+/* ---------- plugins: optional modules next to this file (explore, quests, ...). A module that is missing is ignored and a
+   module that throws is logged and skipped, so one bad file never takes the game down. A plugin may export:
+   init(C, API), onConnect(p), onLeave(p), onKill(p, e), onMove(p, x, z), tick(t), and ops = { opName(p, m) } for { t: 'zone', op } messages. ---------- */
+const PLUGIN_NAMES = ['explore', 'quests', 'skilltree', 'gear', 'auction', 'arena', 'equip', 'world2', 'move', 'instances', 'faction', 'pvp', 'team'];
+const plugins = [];
+let pluginsLoaded = false;
+function loadPlugins() {
+  if (pluginsLoaded) return; pluginsLoaded = true; // layout() may run before init(), so both call this
+  const fs = require('fs'), path = require('path');
+  PLUGIN_NAMES.forEach((n) => {
+    if (!fs.existsSync(path.join(__dirname, n + '.js'))) return;
+    try { const m = require('./' + n); m.__name = n; plugins.push(m); console.log('[plugin] da nap ' + n); } catch (err) { console.error('[plugin ' + n + '] khong nap duoc, bo qua:', err.message); }
+  });
+}
+function each(fn, what) { for (let i = 0; i < plugins.length; i++) { try { fn(plugins[i]); } catch (err) { console.error('[plugin ' + plugins[i].__name + '] ' + (what || '') + ':', err.message); } } }
 
 /* ---------- per-player data (own table, so game.js sanitizeSave never touches it) ---------- */
 function blank() {
   const prof = {}; Object.keys(rules.PROFS).forEach((k) => { prof[k] = { lv: 1, xp: 0 }; });
-  return { prof, mats: {}, cons: {}, dun: { day: dayKey(), n: 0, clears: 0 }, dirty: false };
+  return { prof, mats: {}, cons: {}, dun: { day: dayKey(), n: 0, clears: 0, best: 0 }, dirty: false };
 }
 function clean(raw) {
   const z = blank(); if (!raw || typeof raw !== 'object') return z;
@@ -31,7 +48,7 @@ function clean(raw) {
   });
   Object.keys(rules.MATS).forEach((k) => { z.mats[k] = Math.max(0, Math.min(999, ((raw.mats && raw.mats[k]) | 0))); });
   Object.keys(rules.CONS).forEach((k) => { z.cons[k] = Math.max(0, Math.min(99, ((raw.cons && raw.cons[k]) | 0))); });
-  if (raw.dun) { z.dun.clears = Math.max(0, raw.dun.clears | 0); if (raw.dun.day === z.dun.day) z.dun.n = Math.max(0, raw.dun.n | 0); }
+  if (raw.dun) { z.dun.clears = Math.max(0, raw.dun.clears | 0); z.dun.best = Math.max(0, Math.min(rules.DUNGEON.diffs.length - 1, raw.dun.best | 0)); if (raw.dun.day === z.dun.day) z.dun.n = Math.max(0, raw.dun.n | 0); }
   return z;
 }
 function loadRaw(id) { const r = db.get('SELECT data FROM zone_player WHERE user_id = ?', id); if (!r) return null; try { return JSON.parse(r.data); } catch (e) { return null; } }
@@ -60,7 +77,7 @@ function info(p) {
   const prof = {}; Object.keys(z.prof).forEach((k) => { prof[k] = [z.prof[k].lv, z.prof[k].xp]; });
   const buffs = {}, bf = p.data.buffs || {}, t = now();
   Object.keys(bf).forEach((k) => { if (bf[k] && bf[k].until > t) buffs[k] = [bf[k].v, Math.ceil((bf[k].until - t) / 1000), bf[k].id]; else delete bf[k]; });
-  C.send(p, { t: 'zinfo', prof, mats: z.mats, cons: z.cons, buffs, dun: { left: leftToday(p), max: DUN.dailyMax, active: !!runOf(p), clears: z.dun.clears, minLv: DUN.minLv } });
+  C.send(p, { t: 'zinfo', prof, mats: z.mats, cons: z.cons, buffs, dun: { left: leftToday(p), max: DUN.dailyMax, active: !!runOf(p), clears: z.dun.clears, minLv: DUN.minLv, best: z.dun.best | 0 } });
 }
 
 /* ---------- gathering nodes (same list for everyone) ---------- */
@@ -81,6 +98,8 @@ const nodes = [], nodeById = new Map();
   for (let i = 0; i < 8; i++) add('ore', W.MINE.x, W.MINE.z, 3, 14);
   for (let i = 0; i < 5; i++) add('coal', W.MINE.x, W.MINE.z, 3, 14);
   for (let i = 0; i < 7; i++) add('frost', W.FROST.x, W.FROST.z, 3, 12);
+  for (let i = 0; i < 6; i++) add('ore', W.DESERT.x, W.DESERT.z, 14, 19); // desert (step 11): outside the PvP ring
+  for (let i = 0; i < 4; i++) add('coal', W.DESERT.x, W.DESERT.z, 14, 19);
 })();
 const nodeList = () => { const t = now(); return nodes.map((n) => [n.id, n.type, n.x, n.z, n.until > t ? 0 : 1]); };
 
@@ -96,6 +115,7 @@ function gather(p, m) {
   const got = {};
   def.yield.forEach((y) => { got[y.m] = (got[y.m] || 0) + rint(y.a, y.b) + (pr.lv >= 8 && Math.random() < 0.3 ? 1 : 0); });
   (def.extra || []).forEach((x) => { if (Math.random() < x.p + pr.lv * 0.005) got[x.m] = (got[x.m] || 0) + (x.n || 1); });
+  const gm = evMult('gatherMult'); if (gm > 1) Object.keys(got).forEach((k) => { got[k] = Math.round(got[k] * gm); });
   n.until = now() + def.respawn * 1000;
   C.broadcast({ t: 'node', id: n.id, on: 0 });
   const up = addXp(z, def.prof, def.xp);
@@ -106,6 +126,10 @@ function gather(p, m) {
 
 /* ---------- monster material drops (called from game.js onKill for every contributor) ---------- */
 function onKill(p, e) {
+  coreKill(p, e);
+  each((pl) => pl.onKill && pl.onKill(p, e), 'onKill');
+}
+function coreKill(p, e) {
   try {
     if (!p.zn) return;
     const table = rules.MAT_DROPS[e.type]; if (!table) return;
@@ -138,6 +162,7 @@ function craft(p, m) {
     d.inv.push(item);
   } else if (rc.out.kind === 'potion') d.potions = Math.min(999, d.potions + rc.out.n);
   else if (rc.out.kind === 'cons') z.cons[rc.out.id] = (z.cons[rc.out.id] || 0) + 1;
+  else if (rc.out.kind === 'mat') giveMats(z, { [rc.out.id]: rc.out.n || 1 });
   const up = addXp(z, rc.prof, rc.xp); z.dirty = true;
   C.pushMe(p);
   C.send(p, { t: 'zcraft', ok: true, name: rc.name, item, note, up, prof: rc.prof, xp: rc.xp });
@@ -154,7 +179,11 @@ function useCons(p, m) {
   sys(p, 'Đã dùng ' + def.name + ': ' + def.desc + '.');
   info(p);
 }
-function expBonus(p) { const b = p.data && p.data.buffs && p.data.buffs.exp; return b && b.until > now() ? 1 + b.v : 1; }
+function expBonus(p) {
+  const b = p.data && p.data.buffs && p.data.buffs.exp; let m = b && b.until > now() ? 1 + b.v : 1;
+  for (let i = 0; i < plugins.length; i++) { try { if (plugins[i].expBonus) m *= plugins[i].expBonus(p) || 1; } catch (err) { /* ignore */ } } // e.g. siege-holder guild bonus
+  return m;
+}
 
 /* ---------- dungeon ---------- */
 let runSeq = 1;
@@ -163,6 +192,9 @@ const WAVES = [[['cinder', 4]], [['cinder', 3], ['ombra', 3]], [['dboss', 1]]];
 const isDead = (e) => e.dead;
 const pubOf = (e) => ({ id: e.id, type: e.type, lv: e.lv, maxHp: e.maxHp, hp: e.hp, x: +e.x.toFixed(2), z: +e.z.toFixed(2), f: +e.f.toFixed(2), dead: !!e.dead });
 function runOf(p) { const r = p.run && runs.get(p.run); return r && (r.state === 'run' || r.state === 'clear') ? r : null; }
+/* instances created by plugins (tower, raid): id -> { members: Set(userId), ... }. They reuse the dungeon room and the same "only members see these monsters" filter. */
+const extRuns = new Map();
+const extOf = (p) => { for (const r of extRuns.values()) if (r.members.has(p.id)) return r; return null; };
 function toRun(run, msg) { run.members.forEach((id) => { const o = C.online.get(id); if (o) C.send(o, msg); }); }
 const inRoom = (o) => Math.hypot(o.x - DUN.x0, o.z - DUN.z0) <= DUN.roomR + 2;
 function exitTo(o) { o.x = W.PORTAL.x + 2.5; o.z = W.PORTAL.z + 2.5; o.dirty = true; C.send(o, { t: 'correct', x: o.x, z: o.z }); }
@@ -174,33 +206,36 @@ function tpIn(o, run) {
 function hudMsg(run) {
   const t = now();
   return { t: 'dun', st: 'hud', wave: run.wave, waves: DUN.waves, left: run.enemies.filter((e) => !e.dead).length, secs: Math.max(0, Math.round((run.endsAt - t) / 1000)),
-    n: run.n, wait: run.nextWaveAt ? Math.max(0, Math.ceil((run.nextWaveAt - t) / 1000)) : 0, clear: run.state === 'clear' };
+    n: run.n, wait: run.nextWaveAt ? Math.max(0, Math.ceil((run.nextWaveAt - t) / 1000)) : 0, clear: run.state === 'clear', diff: run.diff | 0 };
 }
 const nearPortal = (o, r) => Math.hypot(o.x - W.PORTAL.x, o.z - W.PORTAL.z) <= r;
 
-function enterDungeon(p) {
+function enterDungeon(p, m) {
   const z = p.zn; if (!z || p.dead) return;
   if (!thr(p, 'dun', 1500)) return;
   const cur = runOf(p);
   if (!nearPortal(p, 9)) return sys(p, 'Hãy đứng gần cổng hầm ngục (phía Nam làng, có vòng sáng tím) rồi nhấn E.');
   if (cur) { tpIn(p, cur); C.send(p, hudMsg(cur)); return sys(p, 'Bạn quay lại hầm ngục.'); }
+  if (extOf(p)) return sys(p, 'Bạn đang ở trong một phó bản khác.');
   if (p.party && p.party.leader !== p.id) return sys(p, 'Chỉ đội trưởng mới mở được cổng. Hãy nhờ đội trưởng nhấn E.');
-  const crew = (p.party ? p.party.members.map((id) => C.online.get(id)).filter(Boolean) : [p]).filter((o) => o.id === p.id || (!o.dead && nearPortal(o, 20) && !runOf(o)));
+  const diff = Math.max(0, Math.min(DUN.diffs.length - 1, Math.floor(Number(m && m.diff)) || 0));
+  const crew = (p.party ? p.party.members.map((id) => C.online.get(id)).filter(Boolean) : [p]).filter((o) => o.id === p.id || (!o.dead && nearPortal(o, 20) && !runOf(o) && !extOf(o)));
   const bad = [];
   crew.forEach((o) => {
-    if ((o.data.level || 1) < DUN.minLv) bad.push(o.name + ' (chưa đủ cấp ' + DUN.minLv + ')');
+    if ((o.data.level || 1) < DUN.diffMinLv[diff]) bad.push(o.name + ' (chưa đủ cấp ' + DUN.diffMinLv[diff] + ')');
     else if (leftToday(o) <= 0) bad.push(o.name + ' (hết lượt hôm nay)');
+    else if (diff > ((o.zn && o.zn.dun.best) | 0) + 1) bad.push(o.name + ' (chưa thắng độ khó ' + DUN.diffs[diff - 1] + ')');
   });
   if (bad.length) return sys(p, 'Chưa thể vào: ' + bad.join(', ') + '.');
   const n = crew.length, t = now();
-  const run = { id: runSeq++, members: new Set(crew.map((o) => o.id)), n, wave: 0, enemies: [], state: 'run', startAt: t, endsAt: t + DUN.minutes * 60000,
-    nextWaveAt: t + 8000, emptyFor: 0, hpMul: 1 + 0.65 * (n - 1), atkMul: 1 + 0.1 * (n - 1), exitAt: 0 };
+  const run = { id: runSeq++, members: new Set(crew.map((o) => o.id)), n, wave: 0, enemies: [], state: 'run', startAt: t, endsAt: t + DUN.minutes * 60000, diff,
+    nextWaveAt: t + 8000, emptyFor: 0, hpMul: (1 + 0.65 * (n - 1)) * DUN.diffHp[diff], atkMul: (1 + 0.1 * (n - 1)) * DUN.diffAtk[diff], exitAt: 0 };
   runs.set(run.id, run);
   crew.forEach((o) => {
     o.run = run.id; o.zn.dun.n++; o.zn.dirty = true;
     tpIn(o, run);
-    C.send(o, { t: 'dun', st: 'start', name: DUN.name, n, minutes: DUN.minutes });
-    sys(o, 'Vào ' + DUN.name + ' cùng ' + n + ' người. Hạ hết ' + DUN.waves + ' đợt quái và boss trong ' + DUN.minutes + ' phút.');
+    C.send(o, { t: 'dun', st: 'start', name: DUN.name + (diff ? ' (' + DUN.diffs[diff] + ')' : ''), n, minutes: DUN.minutes });
+    sys(o, 'Vào ' + DUN.name + ' (' + DUN.diffs[diff] + ') cùng ' + n + ' người. Hạ hết ' + DUN.waves + ' đợt quái và boss trong ' + DUN.minutes + ' phút.');
     info(o);
   });
 }
@@ -225,12 +260,12 @@ function spawnWave(run) {
   toRun(run, { t: 'dun', st: 'wave', wave: run.wave, waves: DUN.waves, boss: run.wave === DUN.waves });
   spawned.forEach((e) => toRun(run, { t: 'espawn', e: pubOf(e) }));
 }
-function reward(o) {
-  const d = o.data, lv = d.level || 1;
-  const exp = Math.round(rules.expNeed(lv) * 0.35), gold = 300 + lv * 20, mats = { core: rint(2, 3), gem: rint(1, 2), gear: rint(1, 2) };
+function reward(o, run) {
+  const d = o.data, lv = d.level || 1, df = run && run.diff | 0, rm = DUN.diffRew[df] || 1;
+  const exp = Math.round(rules.expNeed(lv) * 0.35 * rm), gold = Math.round((300 + lv * 20) * rm), mats = { core: Math.round(rint(2, 3) * rm), gem: Math.round(rint(1, 2) * rm), gear: Math.round(rint(1, 2) * rm) };
   d.gold += gold; d.potions = Math.min(999, d.potions + 3);
   const up = C.addExp(o, exp);
-  if (o.zn) { giveMats(o.zn, mats); o.zn.dun.clears++; }
+  if (o.zn) { giveMats(o.zn, mats); o.zn.dun.clears++; if (df > (o.zn.dun.best | 0)) { o.zn.dun.best = df; sys(o, 'Đã mở độ khó ' + DUN.diffs[Math.min(df + 1, DUN.diffs.length - 1)] + '.'); } }
   C.pushMe(o);
   C.send(o, { t: 'dun', st: 'end', win: true, exp, gold, mats, lvUp: up ? d.level : null });
   info(o);
@@ -239,7 +274,7 @@ function finish(run, win, reason) {
   if (run.state !== 'run') return;
   if (win) {
     run.state = 'clear'; run.exitAt = now() + 25000;
-    run.members.forEach((id) => { const o = C.online.get(id); if (o) reward(o); });
+    run.members.forEach((id) => { const o = C.online.get(id); if (o) reward(o, run); });
   } else {
     toRun(run, { t: 'dun', st: 'end', win: false, reason: reason || '' });
     cleanup(run);
@@ -277,8 +312,9 @@ function tickRuns() {
 }
 /* players may only stand inside the dungeon room while they belong to a running run */
 function blocked(p, x, z) {
+  for (let i = 0; i < plugins.length; i++) { try { if (plugins[i].blocked && plugins[i].blocked(p, x, z)) return true; } catch (err) { /* ignore a broken plugin */ } }
   if (Math.hypot(x - DUN.x0, z - DUN.z0) > DUN.roomR + 1) return false;
-  return !runOf(p);
+  return !runOf(p) && !extOf(p);
 }
 
 /* messages that world.js broadcasts about dungeon monsters go only to the run's members */
@@ -293,12 +329,12 @@ function wrapBroadcast(bc, world) {
           if (e && e.inst) { if (!per.has(e.inst)) per.set(e.inst, []); per.get(e.inst).push(r); } else pub.push(r);
         });
         if (pub.length) bc({ t: 'es', list: pub }, except);
-        per.forEach((list, rid) => { const run = runs.get(rid); if (run) toRun(run, { t: 'es', list }); });
+        per.forEach((list, rid) => { const run = runs.get(rid) || extRuns.get(rid); if (run) toRun(run, { t: 'es', list }); });
         return;
       }
       if (t === 'espawn' || t === 'edmg' || t === 'edie' || t === 'ewind') {
         const e = world.byId.get(t === 'espawn' ? msg.e.id : msg.e);
-        if (e && e.inst) { const run = runs.get(e.inst); if (run) toRun(run, msg); return; }
+        if (e && e.inst) { const run = runs.get(e.inst) || extRuns.get(e.inst); if (run) toRun(run, msg); return; }
       }
     } catch (err) { console.error('zones broadcast', err.message); }
     return bc(msg, except);
@@ -307,11 +343,13 @@ function wrapBroadcast(bc, world) {
 
 /* ---------- monsters of the new zones (called once from world.js while it builds its layout) ---------- */
 function layout(spawnAt) {
+  loadPlugins();
   let seed = 777123; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const ring = (c, n, rMin, rMax, type) => { for (let i = 0; i < n; i++) { const a = rnd() * 6.283, r = rMin + rnd() * (rMax - rMin); spawnAt(type, c.x + Math.cos(a) * r, c.z + Math.sin(a) * r); } };
   ring(W.SWAMP, 8, 3, 15, 'fungo'); ring(W.SWAMP, 5, 5, 15, 'ragno'); spawnAt('sporo', W.SWAMP.x, W.SWAMP.z);
   ring(W.MINE, 8, 3, 14, 'talpa'); ring(W.MINE, 6, 4, 14, 'golem'); spawnAt('reQuang', W.MINE.x, W.MINE.z);
   ring(W.FROST, 8, 3, 12, 'pinguino'); ring(W.FROST, 6, 4, 12, 'orso'); spawnAt('regina', W.FROST.x, W.FROST.z);
+  each((pl) => pl.layout && pl.layout(spawnAt, ring), 'layout'); // step 11: desert and abyss monsters (server/world2.js)
 }
 
 /* ---------- connection lifecycle and requests ---------- */
@@ -325,8 +363,12 @@ function onConnect(p) {
     if (run) { run.enemies.forEach((e) => { if (!e.dead) C.send(p, { t: 'espawn', e: pubOf(e) }); }); C.send(p, hudMsg(run)); }
     else if (inRoom(p)) exitTo(p);
   } catch (err) { console.error('zones connect', err.message); }
+  each((pl) => pl.onConnect && pl.onConnect(p), 'onConnect');
 }
-function onLeave(p) { try { save(p); } catch (err) { console.error('zones leave', err.message); } }
+function onLeave(p) {
+  each((pl) => pl.onLeave && pl.onLeave(p), 'onLeave');
+  try { save(p); } catch (err) { console.error('zones leave', err.message); }
+}
 function handle(p, m) {
   try {
     switch (m.op) {
@@ -334,19 +376,42 @@ function handle(p, m) {
       case 'gather': return gather(p, m);
       case 'craft': return craft(p, m);
       case 'use': return useCons(p, m);
-      case 'dun': return m.act === 'leave' ? leaveRun(p) : enterDungeon(p);
-      default: return;
+      case 'dun': return m.act === 'leave' ? leaveRun(p) : enterDungeon(p, m);
+      default: {
+        const op = String(m.op || '');
+        for (let i = 0; i < plugins.length; i++) {
+          const f = plugins[i].ops && plugins[i].ops[op];
+          if (typeof f === 'function') { try { f(p, m); } catch (err) { console.error('[plugin ' + plugins[i].__name + '] op ' + op + ':', err.message); } return; }
+        }
+      }
     }
   } catch (err) { console.error('zones handle', err.message); }
 }
 function init(ctx) {
   C = ctx;
+  loadPlugins();
+  const API = { C, db, items, rules, thr, sys, rint, now, info, giveMats, addXp, evMult,
+    room: DUN, W, pubOf, toRun, extRuns, extOf, runOf, nearPortal, exitTo, tpIn, plugin: (n) => plugins.find((x) => x.__name === n) || null };
+  const ok = []; // a plugin whose init throws is dropped completely so its hooks never run half-set-up
+  plugins.forEach((pl) => { try { if (pl.init) pl.init(C, API); ok.push(pl); } catch (err) { console.error('[plugin ' + pl.__name + '] init loi, bo qua plugin nay:', err.message); } });
+  plugins.length = 0; ok.forEach((pl) => plugins.push(pl));
   setInterval(() => {
     const t = now();
     nodes.forEach((n) => { if (n.until && n.until <= t) { n.until = 0; C.broadcast({ t: 'node', id: n.id, on: 1 }); } });
     try { tickRuns(); } catch (err) { console.error('zones tick', err.message); }
+    each((pl) => pl.tick && pl.tick(t), 'tick');
   }, 1000).unref();
   setInterval(() => { C.online.forEach((p) => { if (p.zn && p.zn.dirty) { try { save(p); } catch (err) { /* retry next round */ } } }); }, 15000).unref();
 }
 
-module.exports = { init, layout, onConnect, onLeave, handle, onKill, blocked, wrapBroadcast, expBonus };
+/* read-only numbers for the admin page */
+function stats() {
+  const out = [];
+  runs.forEach((run) => {
+    out.push({ id: run.id, state: run.state, wave: run.wave, waves: DUN.waves, members: [...run.members].map((id) => { const o = C.online.get(id); return o ? o.name : '#' + id; }),
+      left: run.enemies.filter((e) => !e.dead).length, secs: Math.max(0, Math.round((run.endsAt - now()) / 1000)) });
+  });
+  return { runs: out, extra: (() => { try { const i = plugins.find((x) => x.__name === 'instances'); return i && i.stats ? i.stats() : []; } catch (err) { return []; } })() };
+}
+
+module.exports = { init, layout, onConnect, onLeave, handle, onKill, blocked, wrapBroadcast, expBonus, stats };

@@ -474,12 +474,13 @@ function onMarket(p, m) {
 /* ---------- NPC shop (potions and basic gear at the player's level; buy price is 5x the sell price) ---------- */
 const NPC = { x: 1.5, z: 5 }, SHOP_RANGE = 15, POTION_PRICE = 30;
 const shopLv = (p) => Math.max(1, Math.min(60, p.data.level | 0));
-const gearPrice = (rarity, ilvl) => items.itemValue({ rarity, ilvl, enh: 0 }) * 5;
+const shopMult = () => { try { return require('./events').shopMult(); } catch (e) { return 1; } }; // admin sale event; 1 when events.js is not installed
+const gearPrice = (rarity, ilvl) => Math.max(1, Math.round(items.itemValue({ rarity, ilvl, enh: 0 }) * 5 * shopMult()));
 function shopList(p) {
-  const lv = shopLv(p);
+  const lv = shopLv(p), pp = Math.max(1, Math.round(POTION_PRICE * shopMult()));
   const list = [
-    { id: 'pot1', kind: 'potion', name: 'Bình máu x1', price: POTION_PRICE },
-    { id: 'pot10', kind: 'potion', name: 'Bình máu x10', price: POTION_PRICE * 10 - 30 }
+    { id: 'pot1', kind: 'potion', name: 'Bình máu x1', price: pp },
+    { id: 'pot10', kind: 'potion', name: 'Bình máu x10', price: Math.max(1, pp * 10 - Math.round(30 * shopMult())) }
   ];
   ['common', 'rare'].forEach((rarity) => items.SLOTS.forEach((slot) => {
     list.push({ id: slot + ':' + rarity, kind: 'gear', slot, rarity, ilvl: lv, price: gearPrice(rarity, lv),
@@ -528,12 +529,19 @@ function onEnhance(p, m) {
   if (d.gold < cost) return sys(p, 'Cần ' + cost + ' vàng để cường hóa.');
   d.gold -= cost;
   const ok = Math.random() < items.enhChance(enh);
-  if (ok) it.enh = enh + 1; else if (enh >= 5) it.enh = enh - 1;
+  let warded = false;
+  if (ok) it.enh = enh + 1;
+  else if (enh >= 5) {
+    /* step 11: from +7 a protection charm (crafted in the smith tab, kept in the material store) is used automatically instead of losing a level */
+    const zn = p.zn;
+    if (enh >= 7 && zn && (zn.mats.ward | 0) > 0) { zn.mats.ward--; zn.dirty = true; warded = true; sys(p, 'Bùa bảo hộ đã được dùng: món đồ không bị tụt cấp.'); }
+    else it.enh = enh - 1;
+  }
   it.stats = items.statsFor(it.slot, it.rarity, it.ilvl, it.enh || 0);
   it.name = items.withEnhName(it.name, it.enh || 0);
   bump(p, 'enh', 1);
   if (ok) { p.soc.st.enhMax = Math.max(p.soc.st.enhMax, it.enh); p.socDirty = true; checkAch(p); }
-  send(p, { t: 'enh', ok, id: it.id, enh: it.enh || 0, name: it.name, cost, lost: !ok && enh >= 5 });
+  send(p, { t: 'enh', ok, id: it.id, enh: it.enh || 0, name: it.name, cost, lost: !ok && enh >= 5 && !warded });
   C.pushMe(p); saveSoc(p);
 }
 
@@ -618,6 +626,7 @@ function expMult(p, contributors) {
   if (p.party) { const n = contributors.filter((o) => o.party === p.party).length; m += 0.08 * (Math.min(n, PARTY_MAX) - 1); }
   try { m *= require('./character').expBonus(p); } catch (e) { /* character module not installed yet */ }
   try { m *= require('./zones').expBonus(p); } catch (e) { /* zones module not installed yet */ }
+  try { m *= require('./events').expMult(); } catch (e) { /* events module not installed yet */ }
   return m;
 }
 
