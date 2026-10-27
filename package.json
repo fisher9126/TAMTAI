@@ -1,0 +1,14 @@
+{
+  "name": "aetherfall-online",
+  "version": "0.2.0",
+  "description": "Aetherfall: game nhập vai 3D chạy trên trình duyệt, có chơi online, chat, bạn bè và trang quản trị.",
+  "private": true,
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js"
+  },
+  "license": "UNLICENSED"
+}

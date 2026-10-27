@@ -1,0 +1,21 @@
+# Dịch vụ systemd: game tự chạy khi VPS khởi động và tự bật lại nếu bị lỗi.
+# Đặt file này vào /etc/systemd/system/aetherfall.service
+[Unit]
+Description=Aetherfall game server
+After=network.target
+
+[Service]
+Type=simple
+User=aetherfall
+WorkingDirectory=/home/aetherfall/app
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server/index.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+# Giới hạn quyền cho an toàn
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
