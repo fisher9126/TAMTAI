@@ -435,6 +435,8 @@ function onMarket(p, m) {
     return;
   }
   if (op === 'mine') return sendMine(p);
+  if (op === 'shop') return send(p, shopView(p));
+  if (op === 'shopbuy') return shopBuy(p, m);
   if (!throttle(p, 'mwrite', 400)) return;
   if (op === 'list') {
     const i = d.inv.findIndex((x) => x.id === m.id); if (i < 0) return sys(p, 'Không thấy món đồ này trong túi.');
@@ -468,6 +470,40 @@ function onMarket(p, m) {
     if (it) d.inv.push(it);
     C.pushMe(p); C.saveNow(p); sendMine(p);
   }
+}
+/* ---------- NPC shop (potions and basic gear at the player's level; buy price is 5x the sell price) ---------- */
+const NPC = { x: 1.5, z: 5 }, SHOP_RANGE = 15, POTION_PRICE = 30;
+const shopLv = (p) => Math.max(1, Math.min(60, p.data.level | 0));
+const gearPrice = (rarity, ilvl) => items.itemValue({ rarity, ilvl, enh: 0 }) * 5;
+function shopList(p) {
+  const lv = shopLv(p);
+  const list = [
+    { id: 'pot1', kind: 'potion', name: 'Bình máu x1', price: POTION_PRICE },
+    { id: 'pot10', kind: 'potion', name: 'Bình máu x10', price: POTION_PRICE * 10 - 30 }
+  ];
+  ['common', 'rare'].forEach((rarity) => items.SLOTS.forEach((slot) => {
+    list.push({ id: slot + ':' + rarity, kind: 'gear', slot, rarity, ilvl: lv, price: gearPrice(rarity, lv),
+      item: { slot, rarity, ilvl: lv, enh: 0, name: items.BASE[slot] + ' ' + items.RNAME[rarity], stats: items.statsFor(slot, rarity, lv, 0) } });
+  }));
+  return list;
+}
+function shopView(p) { return { t: 'market', kind: 'shop', level: shopLv(p), list: shopList(p) }; }
+function shopBuy(p, m) {
+  if (!throttle(p, 'shop', 250)) return;
+  if (!near(p, NPC, SHOP_RANGE)) return sys(p, 'Hãy lại gần NPC ở giữa làng để mua đồ.');
+  const e = shopList(p).find((x) => x.id === m.id); if (!e) return;
+  const d = p.data;
+  if (d.gold < e.price) return sys(p, 'Bạn không đủ vàng.');
+  if (e.kind === 'potion') {
+    const n = e.id === 'pot10' ? 10 : 1;
+    if (d.potions + n > 999) return sys(p, 'Bạn mang đủ bình máu rồi.');
+    d.gold -= e.price; d.potions += n; sys(p, 'Đã mua ' + e.name + ' với giá ' + e.price + ' vàng.');
+  } else {
+    if (d.inv.length >= INV) return sys(p, 'Túi đồ đã đầy.');
+    d.gold -= e.price; const it = items.makeItem(e.slot, e.rarity, e.ilvl); d.inv.push(it);
+    sys(p, 'Đã mua ' + it.name + ' với giá ' + e.price + ' vàng.');
+  }
+  C.pushMe(p); C.saveNow(p);
 }
 function expireMarket() {
   try {

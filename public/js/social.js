@@ -8,7 +8,7 @@
   const esc = H.esc;
   const RC = { common: '#d3dae8', rare: '#62bcff', epic: '#cb92ff', legend: '#ffb84d' };
   const STN = { atk: 'ATK', def: 'DEF', hp: 'HP', crit: 'CRIT%', spd: 'SPD%' };
-  const TABS = [['party', 'Tổ đội'], ['guild', 'Bang hội'], ['trade', 'Giao dịch'], ['market', 'Chợ'], ['forge', 'Cường hóa'], ['daily', 'Nhiệm vụ'], ['rank', 'Xếp hạng']];
+  const TABS = [['party', 'Tổ đội'], ['guild', 'Bang hội'], ['trade', 'Giao dịch'], ['shop', 'Cửa hàng'], ['market', 'Chợ'], ['forge', 'Cường hóa'], ['daily', 'Nhiệm vụ'], ['rank', 'Xếp hạng']];
   const S = { open: false, tab: 'party', party: null, guild: undefined, trade: null, tsel: new Set(), tgold: 0,
     market: { browse: null, mine: [], slot: '', rarity: '', page: 0 }, rank: null, daily: null, forgeMsg: '' };
 
@@ -150,6 +150,17 @@
     return h;
   }
 
+  function vShop() {
+    const s = S.shop, gold = P().gold || 0;
+    let h = '<h4>CỬA HÀNG NPC</h4><p class="afn">Đứng gần NPC ở giữa làng để mua. Vàng của bạn: <b>' + num(gold) + '</b>. Trang bị bán theo cấp hiện tại của bạn' + (s ? ' (cấp ' + s.level + ')' : '') + '; giá mua gấp 5 lần giá bán lại cho NPC. Đồ Sử thi và Huyền thoại chỉ rơi từ quái, boss hoặc mua ở Chợ.</p>';
+    if (!s) return h + '<p class="afn">Đang tải...</p>';
+    const row = (e) => '<div class="afit"><span>' + (e.item ? itemHtml(e.item) : '<b>' + esc(e.name) + '</b>') + '</span><span><b>' + num(e.price) + '</b> vàng <button class="af" data-act="s-buy" data-id="' + esc(e.id) + '"' + (gold < e.price ? ' disabled' : '') + '>Mua</button></span></div>';
+    h += '<h4>BÌNH MÁU</h4>' + s.list.filter((e) => e.kind === 'potion').map(row).join('');
+    h += '<h4>TRANG BỊ THƯỜNG</h4>' + s.list.filter((e) => e.kind === 'gear' && e.rarity === 'common').map(row).join('');
+    h += '<h4>TRANG BỊ HIẾM</h4>' + s.list.filter((e) => e.kind === 'gear' && e.rarity === 'rare').map(row).join('');
+    return h;
+  }
+
   function vForge() {
     const pl = P(); const rows = [];
     IT.SLOTS.forEach((s) => { if (pl.eq && pl.eq[s]) rows.push(['Đang mặc', pl.eq[s]]); });
@@ -184,7 +195,7 @@
     return '<h4>TOP CẤP ĐỘ</h4>' + list(r.level, (x) => 'cấp ' + x.level) + '<h4>TOP GIÀU NHẤT</h4>' + list(r.gold, (x) => num(x.gold) + ' vàng') + '<h4>TOP BANG HỘI</h4>' + list(r.guilds, (x) => 'cấp ' + x.level + ' · ' + x.members + ' người · quỹ ' + num(x.funds));
   }
 
-  const VIEWS = { party: vParty, guild: vGuild, trade: vTrade, market: vMarket, forge: vForge, daily: vDaily, rank: vRank };
+  const VIEWS = { party: vParty, guild: vGuild, trade: vTrade, shop: vShop, market: vMarket, forge: vForge, daily: vDaily, rank: vRank };
   function render() {
     renderHud();
     if (!S.open) return;
@@ -208,6 +219,7 @@
   /* ---------- open / tabs ---------- */
   function load(tab) {
     if (tab === 'market') { send({ t: 'market', op: 'browse', page: S.market.page, slot: S.market.slot, rarity: S.market.rarity }); send({ t: 'market', op: 'mine' }); }
+    else if (tab === 'shop') send({ t: 'market', op: 'shop' });
     else if (tab === 'rank') send({ t: 'rank' });
     else if (tab === 'daily') send({ t: 'daily', op: 'info' });
     else if (tab === 'guild' && S.guild === undefined) send({ t: 'guild', op: 'info' });
@@ -251,6 +263,7 @@
     'm-buy': (d) => send({ t: 'market', op: 'buy', id: Number(d.id), page: S.market.page, slot: S.market.slot, rarity: S.market.rarity }),
     'm-cancel': (d) => send({ t: 'market', op: 'cancel', id: Number(d.id) }),
     'm-sell': () => { const id = val('afMItem'), price = toNum('afMPrice'); if (id && price > 0) send({ t: 'market', op: 'list', id, price }); },
+    's-buy': (d) => send({ t: 'market', op: 'shopbuy', id: d.id }),
     'f-enh': (d) => send({ t: 'enhance', id: d.id }),
     'd-login': () => send({ t: 'daily', op: 'login' }),
     'd-claim': (d) => send({ t: 'daily', op: 'claim', id: d.id })
@@ -290,7 +303,8 @@
         else { S.tsel = new Set(); S.tgold = 0; }
         render(); return true; }
       case 'market':
-        if (m.kind === 'browse') { S.market.browse = m; S.market.page = m.page; } else S.market.mine = m.list;
+        if (m.kind === 'shop') S.shop = m;
+        else if (m.kind === 'browse') { S.market.browse = m; S.market.page = m.page; } else S.market.mine = m.list;
         render(); return true;
       case 'enh':
         S.forgeMsg = m.ok ? 'Thành công! <b>' + esc(m.name) + '</b> (+' + m.enh + ')' : 'Thất bại' + (m.lost ? ', tụt xuống +' + m.enh : '') + '. Mất ' + num(m.cost) + ' vàng.';
@@ -322,7 +336,7 @@
     }
   }
 
-  window.AF_SOCIAL = { onNet, cmd, open, close };
+  window.AF_SOCIAL = { onNet, cmd, open, close, isOpen: () => S.open };
   setInterval(renderHud, 1000);
   renderHud();
 })();
