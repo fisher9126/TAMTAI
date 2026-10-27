@@ -71,19 +71,75 @@
   }
   const trot = (legs, ph, A, K) => legs.forEach((l, i) => { const s = sin(ph + (i === 1 || i === 2 ? PI : 0)); l.h.rotation.x = -s * A; l.k.rotation.x = Math.max(0, s) * K; });
 
+  function tack(body, y, z, war, blanketCol) {
+    const leather = Mt(0x5a3420, { roughness: 0.7 }), dark = Mt(0x3a2214, { roughness: 0.8 }), brass = Mt(0xe0b83a, { metalness: 0.85, roughness: 0.3 }), cloth = Mt(blanketCol, { roughness: 0.9 }), trim = Mt(war ? 0xe0b83a : 0xf2e6c8, { roughness: 0.6, metalness: war ? 0.7 : 0 });
+    bx(body, cloth, 0.86, 0.035, 0.74, 0, y - 0.03, z).castShadow = true;
+    [-1, 1].forEach((s) => { const sk = bx(body, cloth, 0.035, 0.26, 0.62, s * 0.42, y - 0.15, z); sk.rotation.z = s * 0.16; const tr = bx(body, trim, 0.04, 0.045, 0.64, s * 0.445, y - 0.28, z); tr.rotation.z = s * 0.16; });
+    ell(body, leather, 0.27, 0.07, 0.34, 0, y + 0.03, z);
+    ell(body, dark, 0.13, 0.11, 0.08, 0, y + 0.1, z + 0.3);
+    ell(body, dark, 0.22, 0.12, 0.07, 0, y + 0.12, z - 0.3);
+    [-1, 1].forEach((s) => { cyl(body, leather, 0.012, 0.012, 0.5, s * 0.3, y - 0.27, z + 0.05); const st = add(body, new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.014, 5, 10), brass), s * 0.32, y - 0.55, z + 0.05, false); st.rotation.y = PI / 2; });
+    const girth = add(body, new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.025, 5, 20), leather), 0, y - 0.38, z + 0.12, false); girth.rotation.y = PI / 2;
+  }
   function horse(col, war) {
-    const g = grp(new THREE.Group(), 0, 0, 0), m = Mt(col), dk = Mt(war ? 0xb8b8c8 : 0x2a1d16), mane = Mt(war ? 0xf6f6ff : 0x2a1d16), gold = Mt(0xe0b83a, { metalness: 0.8, roughness: 0.3 });
+    const g = grp(new THREE.Group(), 0, 0, 0), m = Mt(col, { roughness: 0.55 }), dk = Mt(war ? 0x9a9aaa : 0x2a1d16, { roughness: 0.6 }), mane = Mt(war ? 0xf6f6ff : 0x2a1d16, { roughness: 0.9 }), muzzle = Mt(war ? 0xd8d8e0 : 0x4a3426, { roughness: 0.6 }),
+      gold = Mt(0xe0b83a, { metalness: 0.85, roughness: 0.28 }), hoofM = Mt(0x1c1612, { roughness: 0.5 }), eyeW = Mt(0xffffff, { roughness: 0.2 }), eyeB = Mt(0x120d0a, { roughness: 0.1 }), strap = Mt(0x3a2214, { roughness: 0.7 });
     const body = grp(g, 0, 0, 0);
-    ell(body, m, 0.36, 0.38, 0.9, 0, 1.12, 0); ell(body, m, 0.37, 0.4, 0.42, 0, 1.18, 0.52); ell(body, m, 0.37, 0.4, 0.42, 0, 1.14, -0.52);
-    const neck = grp(body, 0, 1.3, 0.8); neck.rotation.x = 0.55; ell(neck, m, 0.17, 0.5, 0.2, 0, 0.35, 0);
-    for (let i = 0; i < 5; i++) ell(neck, mane, 0.05, 0.12, 0.09, 0, 0.1 + i * 0.18, -0.2);
-    const head = grp(neck, 0, 0.8, 0.05); head.rotation.x = 1.3; ell(head, m, 0.15, 0.36, 0.17, 0, 0.3, 0); ell(head, dk, 0.11, 0.14, 0.13, 0, 0.64, 0.02);
-    [-1, 1].forEach((k) => { const ear = cone(head, m, 0.045, 0.2, k * 0.09, 0.05, -0.12); ear.rotation.x = -PI / 2; ell(head, Mt(0x15141c), 0.03, 0.03, 0.03, k * 0.15, 0.3, 0.05); });
-    const tail = grp(body, 0, 1.3, -0.9); tail.rotation.x = 0.5; ell(tail, mane, 0.07, 0.45, 0.07, 0, -0.4, 0);
-    add(body, new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.5), Mt(0x6b3a22)), 0, 1.53, -0.02); add(body, new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.03, 0.62), Mt(war ? 0x2a4a9a : 0x9a3a2a)), 0, 1.5, -0.02);
-    if (war) { ell(body, gold, 0.4, 0.44, 0.13, 0, 1.12, 0.92); const pl = cone(head, gold, 0.05, 0.3, 0, 0.0, -0.1); pl.rotation.x = -PI / 2; ell(body, gold, 0.28, 0.1, 0.36, 0, 1.56, -0.4); }
-    const legs = [[-0.2, 0.6], [0.2, 0.6], [-0.2, -0.6], [0.2, -0.6]].map(([x, z]) => leg(body, m, dk, x, 0.95, z, 0.5, 0.45, 0.075));
-    return { g, raise: 0.85, legX: -0.9, legZ: 0.32, anim(t, k) { trot(legs, t * (8 + k * 3), 0.75 * k, 0.9 * k); body.position.y = Math.abs(sin(t * (8 + k * 3))) * 0.05 * k + sin(t * 1.5) * 0.008; neck.rotation.x = 0.55 + sin(t * 2 * (8 + k * 3) / 2) * 0.05 * k; tail.rotation.z = sin(t * (2 + k * 5)) * (0.15 + 0.2 * k); } };
+    ell(body, m, 0.37, 0.4, 0.82, 0, 1.13, -0.02);
+    ell(body, m, 0.36, 0.43, 0.4, 0, 1.17, 0.52);
+    ell(body, m, 0.39, 0.42, 0.42, 0, 1.2, -0.56);
+    ell(body, m, 0.3, 0.2, 0.5, 0, 0.88, 0.0);
+    [-1, 1].forEach((s) => { ell(body, m, 0.16, 0.3, 0.24, s * 0.22, 1.08, -0.62); ell(body, m, 0.14, 0.28, 0.2, s * 0.2, 1.05, 0.58); });
+    const neck = grp(body, 0, 1.32, 0.72); neck.rotation.x = 0.62;
+    ell(neck, m, 0.2, 0.34, 0.25, 0, 0.12, 0); ell(neck, m, 0.16, 0.32, 0.2, 0, 0.45, 0.02);
+    const manes = [];
+    for (let i = 0; i < 9; i++) { const mg = grp(neck, 0, 0.0 + i * 0.075, -0.19 + i * 0.006); ell(mg, mane, 0.045, 0.1, 0.11, 0.03 * (i % 2 ? 1 : -1), 0, -0.04); manes.push(mg); }
+    const head = grp(neck, 0, 0.72, 0.04); head.rotation.x = 1.25;
+    ell(head, m, 0.15, 0.2, 0.17, 0, 0.08, 0);
+    ell(head, m, 0.12, 0.2, 0.14, 0, 0.3, 0.02);
+    ell(head, muzzle, 0.115, 0.13, 0.13, 0, 0.5, 0.03);
+    ell(head, m, 0.08, 0.12, 0.07, 0, 0.22, -0.11);
+    [-1, 1].forEach((k) => {
+      ell(head, Mt(0x0d0a08), 0.022, 0.03, 0.02, k * 0.06, 0.6, 0.08);
+      const ear = cone(head, m, 0.05, 0.2, k * 0.08, 0.0, -0.17); ear.rotation.x = -PI / 2 - 0.2; ear.rotation.z = k * 0.2;
+      ell(head, eyeW, 0.035, 0.04, 0.03, k * 0.135, 0.1, 0.06); ell(head, eyeB, 0.026, 0.032, 0.025, k * 0.152, 0.1, 0.07);
+    });
+    for (let i = 0; i < 3; i++) ell(head, mane, 0.04, 0.09, 0.03, (i - 1) * 0.04, -0.04, -0.15);
+    const bridle1 = add(head, new THREE.Mesh(new THREE.TorusGeometry(0.135, 0.012, 4, 16), strap), 0, 0.42, 0.03, false); bridle1.rotation.x = PI / 2;
+    const bridle2 = add(head, new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 4, 16), strap), 0, 0.02, 0.0, false); bridle2.rotation.y = PI / 2;
+    [-1, 1].forEach((k) => ell(head, gold, 0.025, 0.025, 0.025, k * 0.12, 0.47, 0.05));
+    const tail = grp(body, 0, 1.38, -0.92), tails = []; let tp = tail;
+    for (let i = 0; i < 4; i++) { const seg = grp(tp, 0, i ? -0.2 : 0, i ? -0.02 : 0); seg.rotation.x = i ? 0.15 : 0.55; [-1, 0, 1].forEach((k) => ell(seg, mane, 0.05 - i * 0.004, 0.14, 0.05, k * 0.035, -0.1, 0)); tails.push(seg); tp = seg; }
+    tack(body, 1.55, -0.04, war, war ? 0x2a4a9a : 0x9a3a2a);
+    const rein = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.13, 2.05, 1.15), new THREE.Vector3(-0.17, 1.82, 0.8), new THREE.Vector3(-0.12, 1.66, 0.35)]);
+    add(body, new THREE.Mesh(new THREE.TubeGeometry(rein, 10, 0.012, 4, false), strap), 0, 0, 0, false);
+    const rein2 = new THREE.CatmullRomCurve3([new THREE.Vector3(0.13, 2.05, 1.15), new THREE.Vector3(0.17, 1.82, 0.8), new THREE.Vector3(0.12, 1.66, 0.35)]);
+    add(body, new THREE.Mesh(new THREE.TubeGeometry(rein2, 10, 0.012, 4, false), strap), 0, 0, 0, false);
+    if (war) {
+      ell(body, gold, 0.41, 0.46, 0.14, 0, 1.15, 0.86);
+      const plate = Mt(0xc8ccd8, { metalness: 0.85, roughness: 0.3 });
+      ell(head, plate, 0.13, 0.32, 0.08, 0, 0.3, 0.12);
+      const pl = cone(head, gold, 0.03, 0.32, 0, 0.12, 0.2); pl.rotation.x = 0.4;
+      const plume = grp(head, 0, -0.1, -0.05); for (let i = 0; i < 5; i++) ell(plume, Mt(0xc8283a, { roughness: 0.9 }), 0.04, 0.12, 0.04, 0, 0.0, -0.05 - i * 0.07).rotation.x = -0.6;
+      ell(body, plate, 0.4, 0.15, 0.4, 0, 1.38, -0.62);
+    }
+    const legs = [[-0.2, 0.55], [0.2, 0.55], [-0.21, -0.6], [0.21, -0.6]].map(([x, z]) => {
+      const L = leg(body, m, hoofM, x, 0.98, z, 0.5, 0.46, 0.085);
+      ell(L.k, m, 0.075, 0.07, 0.08, 0, -0.38, 0.0);
+      L.k.children.filter((c) => c.geometry && c.geometry.type === 'BoxGeometry').forEach((b) => { b.visible = false; });
+      cyl(L.k, hoofM, 0.07, 0.085, 0.1, 0, -0.43, 0.02);
+      if (war) cyl(L.k, Mt(0xf6f6ff, { roughness: 1 }), 0.08, 0.1, 0.12, 0, -0.35, 0.01);
+      return L;
+    });
+    g.scale.setScalar(1.25);
+    return { g, raise: 1.22, legX: -0.9, legZ: 0.36, anim(t, k) {
+      const f = 8 + k * 3; trot(legs, t * f, 0.75 * k, 0.9 * k);
+      body.position.y = Math.abs(sin(t * f)) * 0.05 * k + sin(t * 1.5) * 0.008;
+      neck.rotation.x = 0.62 + sin(t * f) * 0.05 * k + (1 - k) * sin(t * 0.7) * 0.04;
+      head.rotation.x = 1.25 + (1 - k) * sin(t * 0.5) * 0.08;
+      manes.forEach((mg, i) => { mg.rotation.z = sin(t * (3 + k * 6) + i * 0.6) * (0.08 + 0.18 * k); });
+      tails.forEach((sg, i) => { sg.rotation.z = sin(t * (2 + k * 5) - i * 0.6) * (0.12 + 0.18 * k); sg.rotation.x = (i ? 0.15 : 0.55) - k * 0.25; });
+    } };
   }
 
   function wolf(col, ash) {
@@ -94,7 +150,9 @@
     const head = grp(neck, 0, 0.45, 0.02); head.rotation.x = 0.9; ell(head, m, 0.19, 0.3, 0.17, 0, 0.12, 0); ell(head, dk, 0.08, 0.16, 0.08, 0, 0.42, 0.02);
     [-1, 1].forEach((k) => { const ear = cone(head, m, 0.06, 0.22, k * 0.11, 0.18, -0.14); ear.rotation.x = -PI / 2; ell(head, eyeM, 0.03, 0.03, 0.03, k * 0.13, 0.22, 0.1); });
     const tail = grp(body, 0, 0.85, -0.8); tail.rotation.x = 0.8; ell(tail, m, 0.1, 0.38, 0.1, 0, -0.32, 0);
-    add(body, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.07, 0.45), Mt(0x4a2f1c)), 0, 1.1, -0.02);
+    tack(body, 1.12, -0.02, ash, ash ? 0x4a1a2a : 0x3a4a6a);
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * PI * 2, c = cone(neck, m, 0.07, 0.24, Math.cos(a) * 0.2, 0.12, Math.sin(a) * 0.18); c.rotation.x = Math.sin(a) * 1.2; c.rotation.z = -Math.cos(a) * 1.2; }
+    ell(tail, m, 0.14, 0.3, 0.14, 0, -0.55, 0); ell(tail, Mt(ash ? 0x120a1c : 0xe8e8e8, { roughness: 0.9 }), 0.09, 0.12, 0.09, 0, -0.82, 0);
     if (ash) { for (let i = 0; i < 6; i++) cone(body, Em(0xff7a2a, 1.1), 0.07, 0.38, 0, 1.0, 0.5 - i * 0.26); [-1, 1].forEach((k) => { const h = cone(head, Mt(0xe8e0c8), 0.05, 0.4, k * 0.12, 0.22, -0.2); h.rotation.x = -PI / 2.4; h.rotation.z = -k * 0.4; }); }
     const legs = [[-0.2, 0.5], [0.2, 0.5], [-0.2, -0.5], [0.2, -0.5]].map(([x, z]) => leg(body, m, dk, x, 0.6, z, 0.32, 0.3, 0.07));
     return { g, raise: 0.45, legX: -0.75, legZ: 0.35, anim(t, k) { trot(legs, t * (10 + k * 4), 0.9 * k, 1.0 * k); body.position.y = Math.abs(sin(t * (10 + k * 4))) * 0.06 * k; tail.rotation.z = sin(t * (3 + k * 6)) * (0.1 + 0.3 * k); head.rotation.x = 0.9 + sin(t * 2) * 0.03; } };
@@ -156,7 +214,7 @@
     const sc = X.scene, prevB = sc.onBeforeRender, prevA = sc.onAfterRender;
     sc.onBeforeRender = function () {
       if (prevB) prevB.apply(this, arguments);
-      if (X.PL && X.PL.root && !applied) { try { tickMount(); } catch (err) { console.error('[move]', err); } applied = offset(); X.PL.root.position.y += applied; }
+      if (X.PL && X.PL.root && !applied) { try { tickMount(); } catch (err) { console.error('[move]', err); } applied = offset(); X.PL.root.position.y += applied; if (applied) X.PL.root.updateMatrixWorld(true); }
     };
     sc.onAfterRender = function () { if (applied && X.PL && X.PL.root) { X.PL.root.position.y -= applied; applied = 0; } if (prevA) prevA.apply(this, arguments); };
   }
