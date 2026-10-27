@@ -127,6 +127,11 @@
       if (pr.rageOn) s.atk *= 1.25;
       if (pr.blessUntil && pr.blessUntil > Date.now()) s.atk *= 1.15;
     }
+    const bf = d.buffs, tNow = Date.now(); /* temporary buffs from potions and food (step 3); never saved, see server/zones.js */
+    if (bf) {
+      const on = (k) => (bf[k] && bf[k].until > tNow ? bf[k].v : 0);
+      s.atk *= 1 + on('atk'); s.def *= 1 + on('def'); s.maxHp *= 1 + on('hp'); s.spd += on('spd');
+    }
     s.maxHp = Math.round(s.maxHp); s.atk = Math.round(s.atk); s.def = Math.round(s.def * 10) / 10; s.maxMp = Math.round(s.maxMp);
     s.crit = Math.round(s.crit * 10) / 10; s.spd = Math.round(s.spd * 10) / 10;
     return s;
@@ -134,13 +139,36 @@
   const pointsTotal = (level) => POINTS_PER_LEVEL * Math.max(0, (level | 0) - 1);
 
   /* World layout (same numbers on both sides) */
-  const WORLD = { VILLAGE: { x: 0, z: 0 }, FOREST: { x: 55, z: 50 }, ARENA: { x: 62, z: -58 }, POND: { x: -34, z: 26 }, R: 108, SPAWN: { x: 1, z: 9 } };
+  const WORLD = { VILLAGE: { x: 0, z: 0 }, FOREST: { x: 55, z: 50 }, ARENA: { x: 62, z: -58 }, POND: { x: -34, z: 26 }, R: 108, SPAWN: { x: 1, z: 9 },
+    SWAMP: { x: -62, z: -30 }, MINE: { x: -20, z: -72 }, FROST: { x: -55, z: 62 }, DUNGEON: { x: 6, z: 76 }, PORTAL: { x: -6, z: -24 } };
+  /* Zones added in step 3. `col` tints the ground, `lv` is only shown to the player. */
+  const ZONES = [
+    { id: 'swamp', name: 'Đầm Lầy Nấm Độc', lv: '7-12', x: WORLD.SWAMP.x, z: WORLD.SWAMP.z, r: 20, col: '#4f7a3a' },
+    { id: 'mine', name: 'Mỏ Quặng Gỉ Sét', lv: '10-15', x: WORLD.MINE.x, z: WORLD.MINE.z, r: 19, col: '#7a6a58' },
+    { id: 'frost', name: 'Cánh Đồng Tủ Lạnh', lv: '13-19', x: WORLD.FROST.x, z: WORLD.FROST.z, r: 17, col: '#bfe3ff' },
+    { id: 'dungeon', name: 'Hầm Ngục Tro Đen', lv: '12+', x: WORLD.DUNGEON.x, z: WORLD.DUNGEON.z, r: 17, col: '#3a2f4a' }
+  ];
+  const DUNGEON = { name: 'Hầm Ngục Tro Đen', minLv: 12, dailyMax: 4, minutes: 15, waves: 3, roomR: 15 };
 
   /* Monsters. Numbers only; the browser adds models. */
   const ENEMIES = {
     teieretta: { name: 'Teieretta Lumacona', lv: [1, 3], hp: 42, atk: 7, spd: 1.6, range: 1.6, aggro: 7, exp: 14, radius: 0.8, drop: 0.3, gold: [2, 6], respawn: 16, leash: 26 },
     gufo: { name: 'Gufo Lampadino', lv: [4, 6], hp: 95, atk: 13, spd: 2.8, range: 1.8, aggro: 10, exp: 34, radius: 0.8, drop: 0.45, gold: [6, 14], respawn: 20, bonus: 6, leash: 26 },
-    boss: { name: 'Lavatricio Torone', lv: [10, 10], hp: 1150, atk: 26, spd: 2.5, range: 3.6, aggro: 16, exp: 420, radius: 2.5, drop: 1, gold: [120, 180], respawn: 70, bonus: 30, leash: 22, boss: true }
+    boss: { name: 'Lavatricio Torone', lv: [10, 10], hp: 1150, atk: 26, spd: 2.5, range: 3.6, aggro: 16, exp: 420, radius: 2.5, drop: 1, gold: [120, 180], respawn: 70, bonus: 30, leash: 22, boss: true },
+    /* Step 3. look = which existing model to reuse, tint/scale recolor and resize it in the browser. elite = bigger monster, always drops. */
+    fungo: { name: 'Funghino Tossico', look: 'teieretta', tint: 0x9be15d, scale: 1.05, lv: [7, 9], hp: 190, atk: 20, spd: 1.9, range: 1.7, aggro: 8, exp: 75, radius: 0.9, drop: 0.35, gold: [10, 20], respawn: 18, leash: 26, bonus: 3 },
+    ragno: { name: 'Ragno Pentola', look: 'gufo', tint: 0x8a5fd0, scale: 0.95, lv: [9, 11], hp: 270, atk: 28, spd: 3.0, range: 1.8, aggro: 10, exp: 115, radius: 0.85, drop: 0.4, gold: [14, 26], respawn: 20, leash: 26, bonus: 5 },
+    sporo: { name: 'Re Nấm Bùn', look: 'teieretta', tint: 0xd95a5a, scale: 2.3, lv: [12, 12], hp: 1500, atk: 40, spd: 2.1, range: 2.6, aggro: 12, exp: 700, radius: 1.9, drop: 1, gold: [80, 140], respawn: 120, leash: 24, bonus: 22, elite: true },
+    talpa: { name: 'Chuột Chũi Búa', look: 'teieretta', tint: 0xb08a5a, scale: 1.2, lv: [10, 12], hp: 340, atk: 32, spd: 2.3, range: 1.8, aggro: 9, exp: 150, radius: 1.0, drop: 0.4, gold: [16, 30], respawn: 20, leash: 26, bonus: 6 },
+    golem: { name: 'Golem Nồi Cơm', look: 'gufo', tint: 0x9a9aa8, scale: 1.5, lv: [12, 14], hp: 560, atk: 42, spd: 2.0, range: 2.4, aggro: 9, exp: 200, radius: 1.3, drop: 0.45, gold: [20, 38], respawn: 24, leash: 26, bonus: 8 },
+    reQuang: { name: 'Vua Quặng Gỉ', look: 'gufo', tint: 0xd08a3c, scale: 2.6, lv: [15, 15], hp: 2900, atk: 50, spd: 2.2, range: 3.0, aggro: 12, exp: 1100, radius: 2.1, drop: 1, gold: [120, 200], respawn: 150, leash: 24, bonus: 26, elite: true },
+    pinguino: { name: 'Pinguino Tủ Lạnh', look: 'teieretta', tint: 0xcfe6ff, scale: 1.1, lv: [13, 15], hp: 440, atk: 36, spd: 2.2, range: 1.8, aggro: 9, exp: 190, radius: 0.95, drop: 0.4, gold: [24, 42], respawn: 22, leash: 26, bonus: 8 },
+    orso: { name: 'Orso Ghiacciolo', look: 'gufo', tint: 0xe8f4ff, scale: 1.35, lv: [15, 17], hp: 650, atk: 47, spd: 2.6, range: 2.2, aggro: 10, exp: 260, radius: 1.2, drop: 0.45, gold: [30, 52], respawn: 26, leash: 26, bonus: 10 },
+    regina: { name: 'Regina Gelata', look: 'gufo', tint: 0x7fc0ff, scale: 2.5, lv: [19, 19], hp: 3900, atk: 58, spd: 2.4, range: 3.0, aggro: 12, exp: 1600, radius: 2.0, drop: 1, gold: [160, 260], respawn: 180, leash: 24, bonus: 30, elite: true },
+    /* dungeon only (spawned per run, never respawn) */
+    cinder: { name: 'Cinderino', look: 'teieretta', tint: 0x3a3548, scale: 1.2, lv: [14, 14], hp: 480, atk: 36, spd: 2.4, range: 1.8, aggro: 12, exp: 120, radius: 1.0, drop: 0.2, gold: [20, 36], respawn: 9999, leash: 40, bonus: 6 },
+    ombra: { name: 'Gufo Ombra', look: 'gufo', tint: 0x5a3f8a, scale: 1.25, lv: [15, 15], hp: 640, atk: 46, spd: 3.1, range: 2.0, aggro: 12, exp: 160, radius: 1.0, drop: 0.25, gold: [26, 44], respawn: 9999, leash: 40, bonus: 8 },
+    dboss: { name: 'Re Tro Đen', look: 'boss', tint: 0x6a3a7a, scale: 1.1, lv: [18, 18], hp: 7000, atk: 54, spd: 2.6, range: 3.6, aggro: 24, exp: 1500, radius: 2.7, drop: 1, gold: [200, 300], respawn: 9999, leash: 40, bonus: 40, boss: true }
   };
 
   const QUESTS = [
@@ -154,7 +182,73 @@
       talk: 'Ngươi đã cứu cả Thung lũng Bình Minh! Cứ tiếp tục săn quái cùng bạn bè, boss sẽ hồi sinh sau ít phút và rơi đồ Huyền thoại.' }
   ];
 
+  /* ---------- Step 3: materials, professions, gathering nodes, recipes, consumables ---------- */
+  const MATS = {
+    herb: { name: 'Cỏ trà', c: '#7ddc8f' }, shell: { name: 'Vỏ ấm trà', c: '#d8c7a8' }, feather: { name: 'Lông bóng đèn', c: '#ffe27a' },
+    shroom: { name: 'Nấm phát sáng', c: '#9be15d' }, venom: { name: 'Tuyến độc', c: '#b48cff' }, ore: { name: 'Quặng gỉ', c: '#c48a52' },
+    coal: { name: 'Than đá', c: '#9a9aa8' }, frost: { name: 'Hoa băng', c: '#9fd3ff' }, pelt: { name: 'Da lông băng', c: '#dff0ff' },
+    gear: { name: 'Bánh răng máy giặt', c: '#f4a64a' }, core: { name: 'Lõi tro', c: '#ff7a55' }, gem: { name: 'Đá quý', c: '#ff8de1' }
+  };
+  const PROFS = {
+    mining: { name: 'Khai khoáng', kind: 'gather', desc: 'Đào quặng, than và đá quý ở các mỏ.' },
+    herbal: { name: 'Hái thuốc', kind: 'gather', desc: 'Hái cỏ, nấm và hoa ngoài đồng.' },
+    smith: { name: 'Rèn', kind: 'craft', desc: 'Rèn trang bị Hiếm, Sử thi và Huyền thoại.' },
+    alchemy: { name: 'Giả kim', kind: 'craft', desc: 'Pha bình máu và thuốc tăng sức tạm thời.' },
+    cooking: { name: 'Nấu ăn', kind: 'craft', desc: 'Nấu món ăn tăng chỉ số tạm thời.' }
+  };
+  const PROF_MAX = 15;
+  const profNeed = (lv) => 30 + lv * 30; // xp to go from lv to lv+1
+  const NODES = {
+    herb: { name: 'Bụi cỏ trà', prof: 'herbal', lv: 1, yield: [{ m: 'herb', a: 1, b: 3 }], extra: [{ m: 'shell', p: 0.1, n: 1 }], respawn: 40, xp: 6 },
+    shroom: { name: 'Cụm nấm phát sáng', prof: 'herbal', lv: 3, yield: [{ m: 'shroom', a: 1, b: 2 }], extra: [{ m: 'venom', p: 0.15, n: 1 }], respawn: 50, xp: 9 },
+    frost: { name: 'Bông hoa băng', prof: 'herbal', lv: 6, yield: [{ m: 'frost', a: 1, b: 2 }], extra: [{ m: 'pelt', p: 0.1, n: 1 }], respawn: 55, xp: 12 },
+    ore: { name: 'Mạch quặng gỉ', prof: 'mining', lv: 1, yield: [{ m: 'ore', a: 1, b: 3 }], extra: [{ m: 'gem', p: 0.04, n: 1 }], respawn: 50, xp: 7 },
+    coal: { name: 'Vỉa than đá', prof: 'mining', lv: 4, yield: [{ m: 'coal', a: 1, b: 2 }], extra: [{ m: 'gem', p: 0.06, n: 1 }], respawn: 55, xp: 10 }
+  };
+  /* [material, chance, min, max] per monster type */
+  const MAT_DROPS = {
+    teieretta: [['shell', 0.35, 1, 2], ['herb', 0.2, 1, 2]], gufo: [['feather', 0.4, 1, 2]], boss: [['gear', 1, 2, 4], ['core', 0.5, 1, 1]],
+    fungo: [['shroom', 0.45, 1, 2]], ragno: [['venom', 0.35, 1, 2], ['shroom', 0.15, 1, 1]], sporo: [['venom', 1, 2, 3], ['gem', 0.6, 1, 1], ['gear', 0.6, 1, 2]],
+    talpa: [['ore', 0.5, 1, 2], ['coal', 0.2, 1, 1]], golem: [['coal', 0.45, 1, 2], ['ore', 0.3, 1, 2], ['gear', 0.15, 1, 1]],
+    reQuang: [['ore', 1, 4, 6], ['coal', 1, 2, 4], ['gem', 0.8, 1, 2], ['gear', 1, 1, 2]],
+    pinguino: [['pelt', 0.4, 1, 2], ['frost', 0.25, 1, 1]], orso: [['pelt', 0.5, 1, 2], ['frost', 0.35, 1, 2]],
+    regina: [['pelt', 1, 3, 4], ['frost', 1, 2, 3], ['gem', 0.8, 1, 2], ['gear', 1, 1, 2]],
+    cinder: [['coal', 0.4, 1, 2], ['core', 0.12, 1, 1]], ombra: [['venom', 0.3, 1, 2], ['core', 0.18, 1, 1]], dboss: [['core', 1, 3, 4], ['gem', 1, 1, 2], ['gear', 1, 2, 3]]
+  };
+  /* consumables: one buff slot per kind (exp, atk, def, hp, spd); a new one replaces the old one */
+  const CONS = {
+    el_exp: { name: 'Tinh chất Tăng EXP', buff: 'exp', v: 0.2, secs: 1200, desc: '+20% EXP trong 20 phút' },
+    el_def: { name: 'Thuốc Da Đá', buff: 'def', v: 0.25, secs: 600, desc: '+25% giáp trong 10 phút' },
+    el_atk: { name: 'Thuốc Cuồng Lực', buff: 'atk', v: 0.15, secs: 600, desc: '+15% sức đánh trong 10 phút' },
+    fd_hp: { name: 'Bánh Ấm Trà', buff: 'hp', v: 0.15, secs: 900, desc: '+15% máu tối đa trong 15 phút' },
+    fd_hp2: { name: 'Lẩu Quặng Hầm', buff: 'hp', v: 0.3, secs: 1200, desc: '+30% máu tối đa trong 20 phút' },
+    fd_spd: { name: 'Súp Lông Cú', buff: 'spd', v: 8, secs: 900, desc: '+8% tốc độ chạy trong 15 phút' },
+    fd_atk: { name: 'Thịt Nướng Băng', buff: 'atk', v: 0.1, secs: 900, desc: '+10% sức đánh trong 15 phút' }
+  };
+  const BUFF_NAME = { exp: 'EXP', atk: 'Sức đánh', def: 'Giáp', hp: 'Máu', spd: 'Tốc độ' };
+  const RECIPES = [];
+  items.SLOTS.forEach((slot) => {
+    const w = slot === 'weapon' || slot === 'armor' ? 1.3 : 1, sn = items.SLOTNAME[slot];
+    RECIPES.push({ id: 'sm_' + slot + '_rare', prof: 'smith', lv: 1, name: sn + ' Hiếm', gold: 40, mats: { ore: Math.round(6 * w), coal: 2 }, out: { kind: 'gear', slot, rarity: 'rare' }, xp: 14 });
+    RECIPES.push({ id: 'sm_' + slot + '_epic', prof: 'smith', lv: 6, name: sn + ' Sử thi', gold: 220, mats: { ore: Math.round(12 * w), coal: 6, gear: 2 }, out: { kind: 'gear', slot, rarity: 'epic' }, xp: 30 });
+    RECIPES.push({ id: 'sm_' + slot + '_legend', prof: 'smith', lv: 12, name: sn + ' Huyền thoại', gold: 900, mats: { ore: Math.round(20 * w), coal: 12, core: 4, gem: 2 }, out: { kind: 'gear', slot, rarity: 'legend' }, xp: 60 });
+  });
+  RECIPES.push(
+    { id: 'al_pot3', prof: 'alchemy', lv: 1, name: 'Bình máu x3', gold: 10, mats: { herb: 3, shell: 1 }, out: { kind: 'potion', n: 3 }, xp: 8 },
+    { id: 'al_pot10', prof: 'alchemy', lv: 4, name: 'Bình máu x10', gold: 35, mats: { herb: 8, shroom: 2 }, out: { kind: 'potion', n: 10 }, xp: 20 },
+    { id: 'al_exp', prof: 'alchemy', lv: 5, name: CONS.el_exp.name, gold: 90, mats: { shroom: 3, feather: 2, venom: 1 }, out: { kind: 'cons', id: 'el_exp' }, xp: 26 },
+    { id: 'al_def', prof: 'alchemy', lv: 7, name: CONS.el_def.name, gold: 120, mats: { pelt: 2, frost: 2, coal: 2 }, out: { kind: 'cons', id: 'el_def' }, xp: 34 },
+    { id: 'al_atk', prof: 'alchemy', lv: 9, name: CONS.el_atk.name, gold: 160, mats: { venom: 3, shroom: 3, gear: 1 }, out: { kind: 'cons', id: 'el_atk' }, xp: 42 },
+    { id: 'ck_hp', prof: 'cooking', lv: 1, name: CONS.fd_hp.name, gold: 15, mats: { shell: 3, herb: 2 }, out: { kind: 'cons', id: 'fd_hp' }, xp: 8 },
+    { id: 'ck_spd', prof: 'cooking', lv: 3, name: CONS.fd_spd.name, gold: 30, mats: { feather: 3, herb: 2 }, out: { kind: 'cons', id: 'fd_spd' }, xp: 14 },
+    { id: 'ck_atk', prof: 'cooking', lv: 6, name: CONS.fd_atk.name, gold: 60, mats: { pelt: 2, frost: 1, coal: 1 }, out: { kind: 'cons', id: 'fd_atk' }, xp: 28 },
+    { id: 'ck_hp2', prof: 'cooking', lv: 10, name: CONS.fd_hp2.name, gold: 120, mats: { ore: 4, shroom: 3, pelt: 3 }, out: { kind: 'cons', id: 'fd_hp2' }, xp: 40 }
+  );
+  /* item level of forged gear: limited by the forger's skill as well as by the character level */
+  const forgeIlvl = (charLv, profLv) => Math.max(1, Math.min(charLv | 0, 4 + (profLv | 0) * 4));
+
   const api = { expNeed, playerStats, pointsTotal, APPEARANCE, RACES, STATS, SKILLS, CLASSES, ADV, POINTS_PER_LEVEL, ADV_LEVEL,
-    WORLD, ENEMIES, ATTACKS, QUESTS, MAX_LEVEL: 60, INV_SIZE: 24, POTION_CD: 8 };
+    WORLD, ZONES, DUNGEON, ENEMIES, ATTACKS, QUESTS, MAX_LEVEL: 60, INV_SIZE: 24, POTION_CD: 8,
+    MATS, PROFS, PROF_MAX, profNeed, NODES, MAT_DROPS, CONS, BUFF_NAME, RECIPES, forgeIlvl };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.AF_RULES = api;
 })(typeof window !== 'undefined' ? window : globalThis);
