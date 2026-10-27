@@ -1,5 +1,6 @@
 /* Shared game rules: used by the browser (window.AF_RULES) and the server (require).
-   The server is the authority for everything here; the browser uses it only to display. */
+   The server is the authority for everything here; the browser uses it only to display.
+   Upgrade: playerStats reads the enhancement level (enh) of equipped items. */
 (function (root) {
   'use strict';
   const items = (typeof module !== 'undefined' && module.exports) ? require('./items.js') : root.AF_ITEMS;
@@ -10,7 +11,7 @@
     const s = { maxHp: 120 + (lv - 1) * 26, atk: 10 + (lv - 1) * 3, def: 2 + (lv - 1), crit: 5, spd: 0, maxMp: 60 + (lv - 1) * 6, maxSt: 100 };
     items.SLOTS.forEach((k) => {
       const it = d.eq && d.eq[k]; if (!it) return;
-      const t = items.statsFor(it.slot, it.rarity, it.ilvl);
+      const t = items.statsFor(it.slot, it.rarity, it.ilvl, it.enh || 0);
       s.maxHp += t.hp || 0; s.atk += t.atk || 0; s.def += t.def || 0; s.crit += t.crit || 0; s.spd += t.spd || 0;
     });
     return s;
