@@ -616,6 +616,7 @@ function expandKill(e, contributors) {
 function expMult(p, contributors) {
   let m = 1 + guildLevelOf(p) * 0.02;
   if (p.party) { const n = contributors.filter((o) => o.party === p.party).length; m += 0.08 * (Math.min(n, PARTY_MAX) - 1); }
+  try { m *= require('./character').expBonus(p); } catch (e) { /* character module not installed yet */ }
   return m;
 }
 

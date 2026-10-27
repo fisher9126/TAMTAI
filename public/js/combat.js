@@ -8,7 +8,7 @@
   if (!H) { console.warn('[combat] thiếu AF_CH, bỏ qua (hãy chạy apply-combat.js)'); return; }
   const esc = H.esc;
   const S = { stunUntil: 0, slowUntil: 0, duelWith: null, duelName: '', oppHp: 0, oppMax: 0, fx: [], startAt: 0 };
-  const FXN = { burn: ['Bỏng', '#ff8a4c'], poison: ['Độc', '#9be15d'], slow: ['Chậm', '#6fc1ff'], stun: ['Choáng', '#ffd95a'] };
+  const FXN = { burn: ['Bỏng', '#ff8a4c'], poison: ['Độc', '#9be15d'], slow: ['Chậm', '#6fc1ff'], stun: ['Choáng', '#ffd95a'], guard: ['Giáp sắt', '#b8c4e6'], hide: ['Ẩn thân', '#b48cff'], bless: ['Phước', '#ffe27a'] };
   const send = (m) => H.NET.send(m);
 
   /* ---------- HUD ---------- */

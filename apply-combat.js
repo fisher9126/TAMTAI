@@ -70,7 +70,7 @@ patch('server/game.js', [
 
 /* ---- public/index.html ---- */
 const CH = "/* AF-COMBAT */ window.AF_CH={ R:R, get time(){return time;}, popNum:(x,y,z,t,c)=>popNum(x,y,z,t,c), heightAt:(x,z)=>heightAt(x,z), toast:(h,b)=>toast(h,b), chatLine:(k,h)=>chatLine(k,h), get others(){return others;}, get NET(){return NET;}, cvs:cvs, esc:(s)=>esc(s), die:()=>{ R.alive=false; $('death').hidden=false; closeInv(); }, isRunning:()=>running };\n";
-const HIT = "const pids=[]; if(window.AF_COMBAT&&window.AF_COMBAT.duelWith!=null&&(kind==='atk'||kind==='spin')){ const o=others.get(window.AF_COMBAT.duelWith); if(o){ const dx=o.x-R.x, dz=o.z-R.z, d=Math.hypot(dx,dz)||0.001; if(d<=range+0.6&&((dx*fx+dz*fz)/d>cosA||d<1.3)) pids.push(o.id); } }\n  if(ids.length||pids.length) NET.send({t:'hit',kind,combo,ids,pids}); return ids.length+pids.length; }";
+const HIT = "const pids=[]; if(window.AF_COMBAT&&window.AF_COMBAT.duelWith!=null){ const o=others.get(window.AF_COMBAT.duelWith); if(o){ const dx=o.x-R.x, dz=o.z-R.z, d=Math.hypot(dx,dz)||0.001; if(d<=range+0.6&&((dx*fx+dz*fz)/d>cosA||d<1.3)) pids.push(o.id); } }\n  if(ids.length||pids.length) NET.send({t:'hit',kind,combo,ids,pids}); return ids.length+pids.length; }";
 patch('public/index.html', [
   { find: "cvs.addEventListener('wheel',e=>{", repl: CH + "cvs.addEventListener('wheel',e=>{" },
   { find: "function onNet(m){", repl: "function onNet(m){\n  try{ if(window.AF_COMBAT&&window.AF_COMBAT.onNet&&window.AF_COMBAT.onNet(m)) return; }catch(err){ console.error('combat',err); }" },

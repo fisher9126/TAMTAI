@@ -1,8 +1,10 @@
 'use strict';
-/* Combat authority: the server now owns player HP/MP, damage taken, death, potion healing, blocking, status effects and 1v1 duels.
-   The browser only sends actions ("I swung", "I dodged", "I blocked") and draws what the server reports. */
+/* Combat authority: the server owns player HP/MP, damage taken, death, potion healing, blocking, status effects and 1v1 duels.
+   The browser only sends actions ("I swung", "I dodged", "I blocked") and draws what the server reports.
+   Step 2 additions: class skill gating, stealth, guard/bless effects, race effects (elf mana regen, dwarf poison resistance, orc rage). */
 const db = require('./db');
 const rules = require('../public/js/rules.js');
+const character = require('./character');
 
 let C = null; // { online, send, sys }
 const now = () => Date.now();
@@ -14,6 +16,7 @@ db.exec('CREATE TABLE IF NOT EXISTS duel_stats (user_id INTEGER PRIMARY KEY, win
 const DODGE_CD = 700, DODGE_INVULN = 500;
 const BLOCK_MS = 600, BLOCK_CD = 1500, PARRY_MS = 370, BLOCK_REDUCE = 0.4, PARRY_STUN = 1200;
 const PVP_SCALE = 0.6, DUEL_RANGE = 40, DUEL_MAX_MS = 5 * 60000;
+const GUARD_MULT = 0.6;
 
 /* what a monster's hit can inflict */
 const ON_HIT = {
@@ -29,6 +32,7 @@ function init(ctx) {
 }
 
 /* ---------- vitals ---------- */
+const maxHp = (p) => stats(p).maxHp;
 function sendVit(p) { C.send(p, { t: 'vit', hp: Math.round(p.hp), mp: Math.floor(p.mp) }); }
 function sendFx(p) {
   const t = now(); const list = [];
@@ -53,9 +57,18 @@ function respawn(p) {
   const st = stats(p); p.hp = st.maxHp; p.mp = st.maxMp; p.fx = new Map(); p.dead = false; p.lastHurt = 0;
   sendVit(p); sendFx(p);
 }
+/* bring a dead ally back with a share of their max HP */
+function revive(p, pct) {
+  if (p.hp > 0) return;
+  p.hp = Math.max(1, Math.round(stats(p).maxHp * pct)); p.fx = new Map(); p.dead = false; p.lastHurt = now();
+  sendVit(p); sendFx(p); C.send(p, { t: 'revived' });
+}
 function heal(p, n) {
   if (p.hp <= 0) return; p.hp = Math.min(stats(p).maxHp, p.hp + n); sendVit(p);
 }
+function fullHeal(p) { const st = stats(p); p.hp = st.maxHp; p.mp = st.maxMp; sendVit(p); }
+/* keep HP/MP inside the (possibly changed) maximums */
+function clamp(p) { const st = stats(p); p.hp = Math.min(p.hp, st.maxHp); p.mp = Math.min(p.mp, st.maxMp); sendVit(p); }
 function potionBlocked(p) { return p.hp <= 0 || p.hp >= stats(p).maxHp; }
 
 /* ---------- status effects ---------- */
@@ -64,7 +77,9 @@ function addFx(p, id, sec, dps) {
   p.fx.set(id, { until: cur ? Math.max(cur.until, until) : until, dps: Math.max(dps || 0, cur ? cur.dps || 0 : 0) });
   sendFx(p);
 }
-function stunned(p) { const f = p.fx && p.fx.get('stun'); return !!f && f.until > now(); }
+function dropFx(p, id) { if (p.fx && p.fx.delete(id)) sendFx(p); }
+function hasFx(p, id) { const f = p.fx && p.fx.get(id); return !!f && f.until > now(); }
+function isStunned(p) { return hasFx(p, 'stun'); }
 
 /* ---------- taking damage ---------- */
 function applyDamage(p, dmg, kind, extra, attacker) {
@@ -74,20 +89,20 @@ function applyDamage(p, dmg, kind, extra, attacker) {
   if (d) { const o = otherOf(d, p); if (o) C.send(o, { t: 'duel', st: 'hp', oppHp: Math.round(p.hp), oppMax: stats(p).maxHp }); }
   if (p.hp > 0) return;
   if (d) return duelEnd(d, attacker || otherOf(d, p), 'hạ gục');
-  p.dead = true; p.fx = new Map(); sendFx(p);
+  p.dead = true; p.fx = new Map(); p.hidden = false; sendFx(p);
 }
 /* A monster (e) or a duel opponent (attacker) hits player p with `raw` damage before defence. */
 function hurt(p, raw, extra, e, attacker) {
   if (!p || p.hp <= 0) return;
   extra = extra || {}; const t = now();
-  if (t < (p.invulnUntil || 0)) return C.send(p, { t: 'hurt', kind: 'miss' });
+  if (p.noChar || t < (p.invulnUntil || 0)) return C.send(p, { t: 'hurt', kind: 'miss' });
   if (t <= (p.blockStart || 0) + PARRY_MS) {
     if (e) { e.stunUntil = t + PARRY_STUN; e.dirty = true; }
     return C.send(p, { t: 'hurt', kind: 'parry', hp: Math.round(p.hp) });
   }
   const blocking = t <= (p.blockUntil || 0);
   const def = stats(p).def;
-  const dmg = Math.max(1, Math.round((raw - def * 0.6) * rand(0.9, 1.1) * (blocking ? BLOCK_REDUCE : 1)));
+  const dmg = Math.max(1, Math.round((raw - def * 0.6) * rand(0.9, 1.1) * (blocking ? BLOCK_REDUCE : 1) * (hasFx(p, 'guard') ? GUARD_MULT : 1)));
   applyDamage(p, dmg, blocking ? 'block' : 'hit', extra, attacker);
   if (p.hp <= 0 || !e || blocking) return;
   const eff = ON_HIT[e.type];
@@ -104,16 +119,18 @@ function tick() {
     if (p.data.level > (p.lastLv || 0)) { p.hp = st.maxHp; p.mp = st.maxMp; changed = true; }
     p.lastLv = p.data.level;
     if (p.hp > st.maxHp) { p.hp = st.maxHp; changed = true; }
+    if (p.hidden && t > (p.hiddenUntil || 0)) p.hidden = false;
+    character.rageUpdate(p, st.maxHp);
     if (p.hp > 0) {
       const dots = []; let fxChanged = false;
       p.fx.forEach((f, id) => {
         if (f.until <= t) { p.fx.delete(id); fxChanged = true; return; }
-        if ((id === 'burn' || id === 'poison') && f.dps) dots.push([id, Math.max(1, Math.round(f.dps / 2))]);
+        if ((id === 'burn' || id === 'poison') && f.dps) dots.push([id, Math.max(1, Math.round(f.dps / 2 * (id === 'poison' ? character.poisonMult(p) : 1)))]);
       });
       if (fxChanged) sendFx(p);
       dots.forEach(([id, n]) => { if (p.hp > 0) { applyDamage(p, n, id, {}, null); changed = true; } });
       if (p.hp > 0 && t - p.lastHurt > 6000 && p.hp < st.maxHp) { p.hp = Math.min(st.maxHp, p.hp + st.maxHp * 0.02 * 0.5); changed = true; }
-      if (p.mp < st.maxMp) { p.mp = Math.min(st.maxMp, p.mp + 3 * 0.5); changed = true; }
+      if (p.mp < st.maxMp) { p.mp = Math.min(st.maxMp, p.mp + 3 * 0.5 * character.mpRegen(p)); changed = true; }
     }
     if (changed || Math.round(p.hp) !== p.sentHp || Math.floor(p.mp) !== p.sentMp) { p.sentHp = Math.round(p.hp); p.sentMp = Math.floor(p.mp); sendVit(p); }
   });
@@ -129,27 +146,28 @@ function tick() {
 
 /* ---------- player actions ---------- */
 function onAct(p, m) {
-  if (p.hp <= 0) return; const t = now();
+  if (p.hp <= 0 || p.noChar) return; const t = now();
   if (m.k === 'dodge') {
     if (t < (p.dodgeReady || 0)) return;
     p.dodgeReady = t + DODGE_CD; p.invulnUntil = t + DODGE_INVULN;
   } else if (m.k === 'block') {
-    if (t < (p.blockReady || 0) || stunned(p)) return;
+    if (t < (p.blockReady || 0) || isStunned(p)) return;
     p.blockReady = t + BLOCK_CD; p.blockStart = t; p.blockUntil = t + BLOCK_MS;
   }
 }
-/* 'hit' message: spend mana, then let the world resolve monsters (doEnemyHit) and/or the duel opponent. */
+/* 'hit' message: check the class may use that attack, spend mana, then let the world resolve monsters (doEnemyHit) and/or the duel opponent. */
 function onHit(p, m, doEnemyHit) {
-  if (p.hp <= 0 || stunned(p)) return;
-  const kind = String(m.kind), a = rules.ATTACKS[kind]; if (!a) return;
+  if (p.hp <= 0 || isStunned(p)) return;
+  const kind = String(m.kind), a = rules.ATTACKS[kind]; if (!a || !character.canUse(p, kind)) return;
   const t = now(); p.cd = p.cd || {};
   const ids = Array.isArray(m.ids) ? m.ids : [], pids = Array.isArray(m.pids) ? m.pids : [];
   const eReady = ids.length > 0 && (p.cd[kind] || 0) <= t + 80;
   const d = duels.get(p.id);
-  const dReady = !!d && t >= d.startAt && pids.length > 0 && (kind === 'atk' || kind === 'spin') && (p.cd['d_' + kind] || 0) <= t + 80;
+  const dReady = !!d && t >= d.startAt && pids.length > 0 && (p.cd['d_' + kind] || 0) <= t + 80;
   if (!eReady && !dReady) return;
   if (a.mp) { if (p.mp < a.mp) return; p.mp -= a.mp; sendVit(p); }
-  if (eReady) doEnemyHit(ids);
+  character.reveal(p);
+  if (eReady) { doEnemyHit(ids); character.afterHit(p, kind, ids); }
   if (dReady) duelHit(p, d, m, kind, a);
 }
 
@@ -231,4 +249,5 @@ function handle(p, m) {
   return undefined;
 }
 
-module.exports = { init, hurt, handle, onHit, onConnect, onLeave, isDead, respawn, heal, potionBlocked };
+module.exports = { init, hurt, handle, onHit, onConnect, onLeave, isDead, respawn, heal, potionBlocked,
+  revive, fullHeal, clamp, addFx, dropFx, isStunned, sendVit, maxHp };
