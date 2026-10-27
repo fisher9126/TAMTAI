@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Aetherfall Quản Trị</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: wrapping row of sidebar + content; content is a stack of panels; detail drawer slides over the right edge */
+:root{
+  --bg:#0b0f17; --side:#0e131d; --panel:#111725; --panel2:#0d1322; --line:#283149; --line2:#1f2738;
+  --fg:#ece6d9; --muted:#a9aebc; --gold:#e9b949; --gold-ink:#231905;
+  --ok:#8fd19e; --warn:#f0cf7e; --bad:#f2a99f; --info:#8ec5f2;
+  --display:'Baloo 2','Trebuchet MS',system-ui,sans-serif; --body:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+a{color:var(--gold)}
+.app{display:flex;flex-wrap:wrap;min-height:100vh}
+aside.side{flex:1 1 220px;max-width:100%;background:var(--side);border-right:1px solid var(--line2);padding:22px 14px;display:flex;flex-direction:column;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+.brand .lg{width:34px;height:34px;border-radius:8px;background:var(--gold);color:var(--gold-ink);font-family:var(--display);font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center}
+.brand b{display:block;font-family:var(--display);font-size:19px;line-height:1}
+.brand small{color:var(--muted);font-size:12px}
+nav.menu{display:flex;flex-direction:column;gap:3px}
+nav.menu a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:7px;color:#cbc6ba;text-decoration:none;font-weight:500}
+nav.menu a:hover{background:#161d2d}
+nav.menu a[aria-current="page"]{background:#1e2536;color:var(--fg);font-weight:700}
+.cnt{padding:1px 8px;border-radius:10px;background:#c8433a;color:#fff;font-size:12px;font-weight:700}
+.cnt:empty{display:none}
+.who{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line2);font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+main{flex:999 1 560px;min-width:0;padding:24px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+h1{margin:0;font-size:24px;font-weight:700;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{margin:0;font-size:15px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.kpi span{color:var(--muted);font-size:13px}
+.kpi b{font-size:26px;font-variant-numeric:tabular-nums}
+.kpi small{font-size:12px;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:18px}
+.row > .panel{flex:1 1 360px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#161d2d}
+.pill{display:inline-block;padding:2px 9px;border-radius:10px;font-size:12px;white-space:nowrap}
+.p-on{background:#183224;color:var(--ok)} .p-off{background:#1e2433;color:var(--muted)} .p-warn{background:#3a2a12;color:var(--warn)} .p-bad{background:#3a1a1a;color:var(--bad)} .p-info{background:#16263a;color:var(--info)}
+.btn{min-height:40px;padding:0 14px;border-radius:7px;border:1px solid var(--line);background:#171e2e;font-weight:600;cursor:pointer}
+.btn:hover{background:#1e2638}
+.btn.pri{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.btn.pri:hover{background:#ffd06a}
+.btn.danger{background:#2a1517;border-color:#7a3530;color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{height:40px;padding:0 11px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);min-width:0}
+textarea{height:auto;padding:10px 11px;resize:vertical}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted);font-weight:600}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end}
+.list{display:flex;flex-direction:column}
+.li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--line2);font-size:13.5px}
+.li:last-child{border-bottom:0}
+.muted{color:var(--muted)}
+.empty{color:var(--muted);font-size:13.5px;padding:8px 0}
+#toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 16px;border-radius:8px;background:#1e2638;border:1px solid var(--line);font-size:14px;max-width:calc(100% - 32px);z-index:30}
+#toast.err{border-color:#7a3530;color:var(--bad)}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);background:#0f1522;border-left:1px solid var(--line);z-index:20;overflow-y:auto;padding:20px max(16px,env(safe-area-inset-right,0px)) 30px 18px;display:flex;flex-direction:column;gap:14px;box-shadow:-20px 0 50px rgba(0,0,0,.4)}
+#drawer header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+#drawer h2{margin:0;font-size:21px}
+.x{width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:#171e2e;cursor:pointer;flex:none}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;font-size:13.5px;font-variant-numeric:tabular-nums}
+.kv div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line2);padding:5px 0}
+.kv div span:first-child{color:var(--muted)}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.items{display:flex;flex-wrap:wrap;gap:6px}
+.it{padding:4px 9px;border-radius:6px;border:1px solid;font-size:12.5px}
+.r-common{border-color:#b2b8c2;color:#c9ced6} .r-rare{border-color:#62aaf0;color:#8ec5f2} .r-epic{border-color:#bb93ec;color:#cfb2f2} .r-legend{border-color:#f4a64a;color:#f7bf78}
+.login{min-height:100vh;display:grid;place-items:center;padding:16px}
+.login .panel{width:min(400px,100%);padding:26px}
+.login h1{font-family:var(--display);font-size:34px;color:var(--gold)}
+#err{color:var(--bad);font-size:14px}
+#err:empty{display:none}
+.sec{display:none}
+.sec.on{display:flex;flex-direction:column;gap:18px}
+@media (max-width:640px){ aside.side{padding:14px} nav.menu{flex-direction:row;flex-wrap:wrap} nav.menu a{min-height:40px} .who{display:none} .kv{grid-template-columns:minmax(0,1fr)} }
+</style>
+</head>
+<body>
+<div class="login" id="loginView" hidden>
+  <form class="panel" id="loginForm" autocomplete="on">
+    <h1>Quản trị</h1>
+    <p class="sub" style="margin:0">Đăng nhập bằng tài khoản game có quyền Admin hoặc GM.</p>
+    <label class="f" for="lu">Tên tài khoản<input id="lu" autocomplete="username" required></label>
+    <label class="f" for="lp">Mật khẩu<input id="lp" type="password" autocomplete="current-password" required></label>
+    <div id="err" role="alert"></div>
+    <button class="btn pri" type="submit" style="min-height:46px">Đăng nhập</button>
+    <a href="/" class="sub">Quay lại game</a>
+  </form>
+</div>
+
+<div class="app" id="appView" hidden>
+  <aside class="side">
+    <div class="brand"><div class="lg">A</div><div><b>Aetherfall</b><small>Bảng quản trị</small></div></div>
+    <nav class="menu" aria-label="Menu quản trị">
+      <a href="#overview">Tổng quan</a>
+      <a href="#players">Người chơi</a>
+      <a href="#reports">Báo cáo vi phạm <span class="cnt" id="repCnt"></span></a>
+      <a href="#gifts">Gửi quà &amp; thông báo</a>
+      <a href="#chatlog">Lịch sử chat</a>
+      <a href="#adminlog">Nhật ký admin</a>
+      <!-- AF-EVENTS --><a href="/admin-game.html">Hệ thống game ↗</a>
+    </nav>
+    <div class="who"><span>Đăng nhập: <b id="meName"></b> · <span id="meRole"></span></span><button class="btn" id="logout" type="button">Đăng xuất</button><a href="/">Mở game</a></div>
+  </aside>
+  <main>
+    <section class="sec" id="s-overview">
+      <div class="head"><div><h1>Tổng quan</h1><div class="sub" id="ovSub">Tự cập nhật mỗi 5 giây</div></div></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="row">
+        <div class="panel"><h2>Đang online</h2><div class="tbl"><table><thead><tr><th>Người chơi</th><th>Cấp</th><th>Vàng</th><th>Vị trí</th><th>Vào lúc</th></tr></thead><tbody id="onlineRows"></tbody></table></div></div>
+        <div class="panel" style="flex:1 1 300px"><h2>Cảnh báo gian lận</h2><div class="list" id="suspects"></div></div>
+      </div>
+    </section>
+
+    <section class="sec" id="s-players">
+      <div class="head"><div><h1>Người chơi</h1><div class="sub">Bấm vào một dòng để xem chi tiết và xử lý</div></div>
+        <form id="searchForm" style="display:flex;gap:8px"><label for="q" class="f" style="position:absolute;left:-9999px">Tìm người chơi</label><input id="q" type="search" placeholder="Tìm theo tên hoặc ID" style="width:240px;max-width:100%"><button class="btn" type="submit">Tìm</button></form></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>ID</th><th>Tên</th><th>Vai trò</th><th>Cấp</th><th>Vàng</th><th>Trạng thái</th><th>Đăng nhập cuối</th></tr></thead><tbody id="playerRows"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-reports">
+      <div class="head"><h1>Báo cáo vi phạm</h1></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>Thời gian</th><th>Người báo</th><th>Bị báo cáo</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead><tbody id="repRows"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-gifts">
+      <div class="head"><h1>Gửi quà &amp; thông báo</h1></div>
+      <form class="panel" id="giftForm">
+        <h2>Gửi quà vào hộp thư</h2>
+        <p class="sub" style="margin:0">Người chơi nhận quà ngay nếu đang online, hoặc ở lần đăng nhập tiếp theo.</p>
+        <div class="form">
+          <label class="f" for="gTarget">Gửi cho<select id="gTarget"><option value="one">Một người chơi (nhập ID)</option><option value="online">Tất cả người đang online</option><option value="all">Toàn bộ máy chủ (chỉ Admin)</option></select></label>
+          <label class="f" for="gId">ID người chơi<input id="gId" type="number" min="1" placeholder="Ví dụ: 12"></label>
+          <label class="f" for="gGold">Vàng<input id="gGold" type="number" min="0" value="0"></label>
+          <label class="f" for="gPot">Bình máu<input id="gPot" type="number" min="0" value="0"></label>
+        </div>
+        <div class="form">
+          <label class="f" for="gSlot">Vật phẩm<select id="gSlot"><option value="">Không gửi vật phẩm</option><option value="weapon">Vũ khí</option><option value="helmet">Mũ</option><option value="armor">Giáp</option><option value="boots">Giày</option><option value="cape">Áo choàng</option><option value="random">Ngẫu nhiên</option></select></label>
+          <label class="f" for="gRar">Độ hiếm<select id="gRar"><option value="common">Thường</option><option value="rare" selected>Hiếm</option><option value="epic">Sử thi</option><option value="legend">Huyền thoại</option></select></label>
+          <label class="f" for="gLvl">Cấp đồ<input id="gLvl" type="number" min="1" max="60" value="5"></label>
+          <label class="f" for="gMsg">Lời nhắn<input id="gMsg" maxlength="200" placeholder="Đền bù bảo trì ngày 27/10"></label>
+        </div>
+        <div class="acts"><button class="btn pri" type="submit">Gửi quà</button></div>
+      </form>
+      <form class="panel" id="annForm">
+        <h2>Thông báo trong game</h2>
+        <p class="sub" style="margin:0">Hiện lên màn hình và khung chat của mọi người đang online.</p>
+        <label class="f" for="annText">Nội dung<textarea id="annText" rows="2" maxlength="200" placeholder="Máy chủ bảo trì lúc 22:00, dự kiến 15 phút."></textarea></label>
+        <div class="acts"><button class="btn pri" type="submit">Gửi thông báo</button></div>
+      </form>
+    </section>
+
+    <section class="sec" id="s-chatlog">
+      <div class="head"><h1>Lịch sử chat</h1><div class="sub">150 tin gần nhất · lưu 30 ngày</div></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>Thời gian</th><th>Người gửi</th><th>Kênh</th><th>Nội dung</th></tr></thead><tbody id="chatRows"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-adminlog">
+      <div class="head"><h1>Nhật ký admin</h1><div class="sub">Mọi thao tác quản trị được ghi lại</div></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>Thời gian</th><th>Người làm</th><th>Hành động</th><th>Đối tượng</th><th>Chi tiết</th></tr></thead><tbody id="logRows"></tbody></table></div></div>
+    </section>
+  </main>
+</div>
+
+<aside id="drawer" hidden aria-label="Chi tiết người chơi"></aside>
+<div id="toast" hidden role="status"></div>
+
+<script src="/js/items.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=t=>t?new Date(t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'—';
+const nf=n=>Number(n||0).toLocaleString('vi-VN');
+const ROLE={admin:'Admin',gm:'GM',player:'Người chơi'};
+const ACTION={kick:'Đưa ra khỏi game',mute:'Cấm chat',unmute:'Bỏ cấm chat',ban:'Khóa tài khoản',unban:'Mở khóa',gift:'Gửi quà',announce:'Thông báo',role:'Đổi vai trò',report_close:'Xử lý báo cáo',suspect:'Nghi gian lận'};
+let token=null, me=null, timer=null;
+try{ token=localStorage.getItem('af-token'); }catch(e){}
+
+function toast(msg,err){ const t=$('toast'); t.textContent=msg; t.className=err?'err':''; t.hidden=false; clearTimeout(t._h); t._h=setTimeout(()=>{ t.hidden=true; },3500); }
+async function api(path,body){
+  let r; try{ r=await fetch(path,{method:body?'POST':'GET',headers:Object.assign({'Content-Type':'application/json'},token?{Authorization:'Bearer '+token}:{}),body:body?JSON.stringify(body):undefined}); }
+  catch(e){ throw new Error('Không kết nối được máy chủ.'); }
+  let d=null; try{ d=await r.json(); }catch(e){}
+  if(r.status===401){ showLogin('Phiên đăng nhập đã hết hạn. Đăng nhập lại.'); throw new Error('Phiên đăng nhập đã hết hạn.'); }
+  if(!r.ok) throw new Error((d&&d.error)||'Máy chủ gặp lỗi ('+r.status+').');
+  return d;
+}
+function showLogin(msg){ $('appView').hidden=true; $('drawer').hidden=true; $('loginView').hidden=false; $('err').textContent=msg||''; clearInterval(timer); }
+async function showApp(){
+  $('loginView').hidden=true; $('appView').hidden=false; $('meName').textContent=me.username; $('meRole').textContent=ROLE[me.role]||me.role;
+  if(me.role!=='admin') $('gTarget').querySelector('[value="all"]').disabled=true;
+  route(); clearInterval(timer); timer=setInterval(()=>{ if(!document.hidden) refresh(true); },5000);
+}
+$('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault(); $('err').textContent='';
+  try{ const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('lu').value.trim(),password:$('lp').value})}); const d=await r.json().catch(()=>null);
+    if(!r.ok) throw new Error((d&&d.error)||'Đăng nhập thất bại.');
+    if(d.user.role!=='admin'&&d.user.role!=='gm') throw new Error('Tài khoản này không có quyền quản trị.');
+    token=d.token; me=d.user; try{ localStorage.setItem('af-token',token); }catch(_){} showApp(); }
+  catch(err){ $('err').textContent=err.message; }
+});
+$('logout').addEventListener('click',async()=>{ try{ await api('/api/logout',{}); }catch(e){} try{ localStorage.removeItem('af-token'); }catch(e){} token=null; showLogin(); });
+
+/* routing */
+const SECTIONS=['overview','players','reports','gifts','chatlog','adminlog'];
+function cur(){ const h=location.hash.slice(1); return SECTIONS.includes(h)?h:'overview'; }
+function route(){ const c=cur(); SECTIONS.forEach(s=>{ $('s-'+s).classList.toggle('on',s===c); }); document.querySelectorAll('nav.menu a').forEach(a=>{ if(a.getAttribute('href')==='#'+c) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); }); refresh(); }
+window.addEventListener('hashchange',route);
+function refresh(quiet){ const c=cur(); const f={overview:loadOverview,players:loadPlayers,reports:loadReports,chatlog:loadChat,adminlog:loadLog}[c]; if(f) f().catch(e=>{ if(!quiet) toast(e.message,true); }); }
+
+/* overview */
+function dur(s){ const h=Math.floor(s/3600), m=Math.floor(s%3600/60); return h?h+' giờ '+m+' phút':m+' phút'; }
+async function loadOverview(){
+  const d=await api('/api/admin/overview');
+  $('repCnt').textContent=d.reportsNew||'';
+  $('kpis').innerHTML=[['Đang online',nf(d.online),'người chơi trong thế giới'],['Tổng tài khoản',nf(d.totalUsers),nf(d.newToday)+' tài khoản mới trong 24 giờ'],['Hoạt động 24 giờ',nf(d.activeToday),'người đã đăng nhập'],['Báo cáo chưa xử lý',nf(d.reportsNew),'<a href="#reports">Xem báo cáo</a>'],['Máy chủ','Ổn định','Chạy '+dur(d.uptime)+' · RAM '+d.memoryMB+' MB']]
+    .map(k=>'<div class="kpi"><span>'+k[0]+'</span><b>'+k[1]+'</b><small>'+k[2]+'</small></div>').join('');
+  $('onlineRows').innerHTML=d.onlineList.length?d.onlineList.map(p=>'<tr class="click" data-id="'+p.id+'"><td><b>'+esc(p.name)+'</b>'+(p.role!=='player'?' <span class="pill p-info">'+ROLE[p.role]+'</span>':'')+'</td><td>'+p.level+'</td><td>'+nf(p.gold)+'</td><td class="muted">'+p.x+', '+p.z+'</td><td class="muted">'+fmt(p.since)+'</td></tr>').join(''):'<tr><td colspan="5" class="empty">Chưa có ai online.</td></tr>';
+  $('suspects').innerHTML=d.suspects.length?d.suspects.map(s=>'<div class="li"><span><b>'+esc(s.username||'?')+'</b> · '+esc(s.detail)+'</span><span class="muted">'+fmt(s.created_at)+'</span></div>').join(''):'<div class="empty">Không có cảnh báo nào.</div>';
+}
+/* players */
+let lastQ='';
+function statusPills(p){ const t=Date.now(); let h=p.online?'<span class="pill p-on">Online</span>':'<span class="pill p-off">Offline</span>';
+  if(p.banned_until>t) h+=' <span class="pill p-bad">Bị khóa</span>'; if(p.muted_until>t) h+=' <span class="pill p-warn">Cấm chat</span>'; return h; }
+async function loadPlayers(){
+  const d=await api('/api/admin/players?q='+encodeURIComponent(lastQ));
+  $('playerRows').innerHTML=d.players.length?d.players.map(p=>'<tr class="click" data-id="'+p.id+'"><td class="muted">'+p.id+'</td><td><b>'+esc(p.username)+'</b></td><td>'+(ROLE[p.role]||p.role)+'</td><td>'+p.level+'</td><td>'+nf(p.gold)+'</td><td>'+statusPills(p)+'</td><td class="muted">'+fmt(p.last_login)+'</td></tr>').join(''):'<tr><td colspan="7" class="empty">Không tìm thấy người chơi nào.</td></tr>';
+}
+$('searchForm').addEventListener('submit',e=>{ e.preventDefault(); lastQ=$('q').value.trim(); loadPlayers().catch(err=>toast(err.message,true)); });
+document.addEventListener('click',e=>{ const tr=e.target.closest('tr.click[data-id]'); if(tr&&!e.target.closest('a,button')) openPlayer(Number(tr.dataset.id)); });
+
+/* player drawer */
+let openId=null;
+async function openPlayer(id){
+  openId=id; const dr=$('drawer'); dr.hidden=false; dr.innerHTML='<p class="empty">Đang tải...</p>';
+  let d; try{ d=await api('/api/admin/player/'+id); }catch(e){ dr.innerHTML='<p class="empty">'+esc(e.message)+'</p>'; return; }
+  const p=d.player, data=d.data||{}; const t=Date.now();
+  const it=x=>x?'<span class="it r-'+x.rarity+'">'+esc(x.name)+' · '+(AF_ITEMS.RNAME[x.rarity]||'')+' · cấp '+x.ilvl+'</span>':'';
+  const eq=data.eq?AF_ITEMS.SLOTS.map(s=>data.eq[s]?it(data.eq[s]):'<span class="it" style="border-color:#2a3450;color:#7d8597">'+AF_ITEMS.SLOTNAME[s]+': trống</span>').join(''):'';
+  dr.innerHTML='<header><div><h2>'+esc(p.username)+'</h2><div class="sub">ID '+p.id+' · '+(ROLE[p.role]||p.role)+' · tạo ngày '+fmt(p.created_at)+'</div><div style="margin-top:8px">'+statusPills(p)+'</div></div><button class="x" type="button" id="drX" aria-label="Đóng">✕</button></header>'+
+    '<div class="kv"><div><span>Cấp</span><span>'+(data.level||1)+'</span></div><div><span>Vàng</span><span>'+nf(data.gold)+'</span></div><div><span>Bình máu</span><span>'+(data.potions||0)+'</span></div><div><span>Nhiệm vụ</span><span>'+((data.quest||0)+1)+' / 4</span></div><div><span>Thời gian chơi</span><span>'+dur(p.play_seconds||0)+'</span></div><div><span>Đăng nhập cuối</span><span>'+fmt(p.last_login)+'</span></div><div><span>IP gần nhất</span><span>'+esc(p.last_ip||'—')+'</span></div><div><span>Bạn bè</span><span>'+d.friends.length+'</span></div></div>'+
+    (p.banned_until>t?'<div class="pill p-bad" style="white-space:normal">Bị khóa đến '+fmt(p.banned_until)+(p.ban_reason?' · '+esc(p.ban_reason):'')+'</div>':'')+
+    '<div class="panel"><h2>Đang mặc</h2><div class="items">'+eq+'</div><h2>Túi đồ · '+((data.inv||[]).length)+' / 24</h2><div class="items">'+((data.inv||[]).map(it).join('')||'<span class="muted">Túi trống</span>')+'</div></div>'+
+    '<div class="panel"><h2>Xử lý</h2><div class="acts">'+
+      '<button class="btn" data-a="kick" type="button"'+(p.online?'':' disabled')+'>Đưa ra khỏi game</button>'+
+      (p.muted_until>t?'<button class="btn" data-a="unmute" type="button">Bỏ cấm chat</button>':'<button class="btn" data-a="mute" type="button">Cấm chat 60 phút</button>')+
+      (p.role==='admin'?'':(p.banned_until>t?'<button class="btn" data-a="unban" type="button">Mở khóa tài khoản</button>':'<button class="btn danger" data-a="ban" type="button">Khóa tài khoản…</button>'))+
+      '<button class="btn" data-a="gift" type="button">Gửi quà…</button>'+
+      (me.role==='admin'&&p.id!==me.id?'<select id="roleSel" aria-label="Vai trò"><option value="player">Người chơi</option><option value="gm">GM</option><option value="admin">Admin</option></select><button class="btn" data-a="role" type="button">Đổi vai trò</button>':'')+
+    '</div><div id="banBox" hidden class="form"><label class="f" for="banDays">Số ngày khóa<select id="banDays"><option value="1">1 ngày</option><option value="3">3 ngày</option><option value="7">7 ngày</option><option value="30">30 ngày</option><option value="36500">Vĩnh viễn</option></select></label><label class="f" for="banReason">Lý do<input id="banReason" maxlength="200" placeholder="Dùng phần mềm gian lận"></label><button class="btn danger" data-a="banok" type="button">Xác nhận khóa</button></div></div>'+
+    '<div class="panel"><h2>Báo cáo về người này</h2><div class="list">'+(d.reports.map(r=>'<div class="li"><span><b>'+esc(r.reporter)+'</b>: '+esc(r.reason)+'</span><span class="muted">'+fmt(r.created_at)+(r.status==='new'?' · mới':'')+'</span></div>').join('')||'<div class="empty">Chưa có báo cáo.</div>')+'</div></div>'+
+    '<div class="panel"><h2>Chat gần đây</h2><div class="list">'+(d.chat.map(c=>'<div class="li"><span>'+(c.channel==='whisper'?'<span class="muted">→ '+esc(c.target)+'</span> ':'')+esc(c.text)+'</span><span class="muted">'+fmt(c.created_at)+'</span></div>').join('')||'<div class="empty">Chưa chat gì.</div>')+'</div></div>'+
+    '<div class="panel"><h2>Thư và quà</h2><div class="list">'+(d.mail.map(m=>'<div class="li"><span>'+esc(m.from_name)+': '+esc(m.message)+'</span><span class="muted">'+fmt(m.created_at)+' · '+(m.claimed_at?'đã nhận':'chưa nhận')+'</span></div>').join('')||'<div class="empty">Chưa có thư.</div>')+'</div></div>';
+  if($('roleSel')) $('roleSel').value=p.role;
+}
+$('drawer').addEventListener('click',async e=>{
+  if(e.target.id==='drX'){ $('drawer').hidden=true; openId=null; return; }
+  const b=e.target.closest('button[data-a]'); if(!b)return; const a=b.dataset.a, id=openId;
+  try{
+    let r;
+    if(a==='kick') r=await api('/api/admin/player/'+id+'/kick',{reason:''});
+    if(a==='mute') r=await api('/api/admin/player/'+id+'/mute',{minutes:60});
+    if(a==='unmute') r=await api('/api/admin/player/'+id+'/mute',{minutes:0});
+    if(a==='ban'){ $('banBox').hidden=false; return; }
+    if(a==='banok') r=await api('/api/admin/player/'+id+'/ban',{days:Number($('banDays').value),reason:$('banReason').value});
+    if(a==='unban') r=await api('/api/admin/player/'+id+'/ban',{days:0});
+    if(a==='role') r=await api('/api/admin/player/'+id+'/role',{role:$('roleSel').value});
+    if(a==='gift'){ location.hash='#gifts'; $('gTarget').value='one'; $('gId').value=id; $('drawer').hidden=true; return; }
+    if(r) toast(r.message); openPlayer(id); refresh(true);
+  }catch(err){ toast(err.message,true); }
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('drawer').hidden){ $('drawer').hidden=true; openId=null; } });
+
+/* reports */
+async function loadReports(){
+  const d=await api('/api/admin/reports'); const n=d.reports.filter(r=>r.status==='new').length; $('repCnt').textContent=n||'';
+  $('repRows').innerHTML=d.reports.length?d.reports.map(r=>'<tr><td class="muted">'+fmt(r.created_at)+'</td><td>'+esc(r.reporter)+'</td><td><a href="#reports" data-open="'+r.target_id+'">'+esc(r.target)+'</a></td><td>'+esc(r.reason)+'</td><td>'+(r.status==='new'?'<span class="pill p-warn">Mới</span>':'<span class="pill p-off">Đã xử lý</span>')+'</td><td>'+(r.status==='new'?'<button class="btn" type="button" data-close="'+r.id+'">Đã xử lý</button>':'')+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">Chưa có báo cáo nào.</td></tr>';
+}
+$('repRows').addEventListener('click',async e=>{
+  const o=e.target.closest('[data-open]'); if(o){ e.preventDefault(); openPlayer(Number(o.dataset.open)); return; }
+  const c=e.target.closest('[data-close]'); if(c){ try{ const r=await api('/api/admin/reports/'+c.dataset.close+'/close',{}); toast(r.message); loadReports(); }catch(err){ toast(err.message,true); } }
+});
+/* gifts + announce */
+$('gTarget').addEventListener('change',()=>{ $('gId').disabled=$('gTarget').value!=='one'; });
+$('giftForm').addEventListener('submit',async e=>{
+  e.preventDefault(); const tv=$('gTarget').value; const target=tv==='one'?Number($('gId').value):tv;
+  if(tv==='one'&&!target){ toast('Nhập ID người chơi nhận quà.',true); return; }
+  const slot=$('gSlot').value; const itemsList=slot?[{slot:slot==='random'?null:slot,rarity:$('gRar').value,level:Number($('gLvl').value)||1}]:[];
+  const btn=e.submitter||e.target.querySelector('button[type=submit]'); btn.disabled=true;
+  try{ const r=await api('/api/admin/gift',{target,gold:Number($('gGold').value)||0,potions:Number($('gPot').value)||0,items:itemsList,message:$('gMsg').value}); toast(r.message); }
+  catch(err){ toast(err.message,true); } finally{ btn.disabled=false; }
+});
+$('annForm').addEventListener('submit',async e=>{ e.preventDefault(); try{ const r=await api('/api/admin/announce',{text:$('annText').value}); toast(r.message); $('annText').value=''; }catch(err){ toast(err.message,true); } });
+/* chat + log */
+async function loadChat(){ const d=await api('/api/admin/chat'); $('chatRows').innerHTML=d.chat.length?d.chat.map(c=>'<tr><td class="muted">'+fmt(c.created_at)+'</td><td><b>'+esc(c.username)+'</b></td><td>'+(c.channel==='whisper'?'Nhắn riêng → '+esc(c.target):'Thế giới')+'</td><td>'+esc(c.text)+'</td></tr>').join(''):'<tr><td colspan="4" class="empty">Chưa có tin nhắn.</td></tr>'; }
+async function loadLog(){ const d=await api('/api/admin/log'); $('logRows').innerHTML=d.log.length?d.log.map(l=>'<tr><td class="muted">'+fmt(l.created_at)+'</td><td>'+esc(l.admin||'Hệ thống')+'</td><td>'+(l.action==='suspect'?'<span class="pill p-warn">'+ACTION[l.action]+'</span>':esc(ACTION[l.action]||l.action))+'</td><td>'+esc(l.target||'—')+'</td><td class="muted">'+esc(l.detail||'')+'</td></tr>').join(''):'<tr><td colspan="5" class="empty">Chưa có thao tác nào.</td></tr>'; }
+
+/* start */
+(async function(){
+  if(!token){ showLogin(); return; }
+  try{ const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+token}}); const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    if(d.user.role!=='admin'&&d.user.role!=='gm'){ showLogin('Tài khoản '+d.user.username+' không có quyền quản trị. Đăng nhập bằng tài khoản Admin.'); return; }
+    me=d.user; showApp(); }
+  catch(e){ showLogin(); }
+})();
+})();
+</script>
+</body>
+</html>

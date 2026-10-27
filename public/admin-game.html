@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Aetherfall Quản Trị: Hệ thống game</title>
+<style>
+:root{--bg:#0b0f17;--side:#0e131d;--panel:#111725;--panel2:#0d1322;--line:#283149;--line2:#1f2738;--fg:#ece6d9;--muted:#a9aebc;--gold:#e9b949;--gold-ink:#231905;--ok:#8fd19e;--warn:#f0cf7e;--bad:#f2a99f;--info:#8ec5f2;
+  --display:'Baloo 2','Trebuchet MS',system-ui,sans-serif;--body:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;color-scheme:dark}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+a{color:var(--gold)}
+.app{display:flex;flex-wrap:wrap;min-height:100vh}
+aside.side{flex:1 1 220px;max-width:100%;background:var(--side);border-right:1px solid var(--line2);padding:22px 14px;display:flex;flex-direction:column;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+.brand .lg{width:34px;height:34px;border-radius:8px;background:var(--gold);color:var(--gold-ink);font-family:var(--display);font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center}
+.brand b{display:block;font-family:var(--display);font-size:19px;line-height:1}
+.brand small{color:var(--muted);font-size:12px}
+nav.menu{display:flex;flex-direction:column;gap:3px}
+nav.menu a{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 12px;border-radius:7px;color:#cbc6ba;text-decoration:none;font-weight:500}
+nav.menu a:hover{background:#161d2d}
+nav.menu a[aria-current="page"]{background:#1e2536;color:var(--fg);font-weight:700}
+.who{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line2);font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+main{flex:999 1 560px;min-width:0;padding:24px 16px 40px;display:flex;flex-direction:column;gap:18px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+h1{margin:0;font-size:24px;font-weight:700}
+.sub{color:var(--muted);font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{margin:0;font-size:15px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.kpi span{color:var(--muted);font-size:13px}.kpi b{font-size:24px;font-variant-numeric:tabular-nums}.kpi small{font-size:12px;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:18px}.row>.panel{flex:1 1 360px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr.click{cursor:pointer}tr.click:hover td{background:#161d2d}
+.pill{display:inline-block;padding:2px 9px;border-radius:10px;font-size:12px;white-space:nowrap}
+.p-on{background:#183224;color:var(--ok)}.p-off{background:#1e2433;color:var(--muted)}.p-warn{background:#3a2a12;color:var(--warn)}.p-bad{background:#3a1a1a;color:var(--bad)}.p-info{background:#16263a;color:var(--info)}
+.btn{min-height:40px;padding:0 14px;border-radius:7px;border:1px solid var(--line);background:#171e2e;font-weight:600;cursor:pointer}
+.btn:hover{background:#1e2638}.btn.pri{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}.btn.pri:hover{background:#ffd06a}
+.btn.danger{background:#2a1517;border-color:#7a3530;color:var(--bad)}.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{height:40px;padding:0 11px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);min-width:0}
+input[type=checkbox]{height:auto;width:18px;height:18px}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--muted);font-weight:600}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.muted{color:var(--muted)}.empty{color:var(--muted);font-size:13.5px;padding:8px 0}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);padding:10px 16px;border-radius:8px;background:#1e2638;border:1px solid var(--line);font-size:14px;max-width:calc(100% - 32px);z-index:30}
+#toast.err{border-color:#7a3530;color:var(--bad)}
+.sec{display:none}.sec.on{display:flex;flex-direction:column;gap:18px}
+.bars{display:flex;align-items:flex-end;gap:4px;height:130px;padding-top:6px}
+.bars .c{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;min-width:0;height:100%}
+.bars .c i{display:block;width:100%;max-width:34px;background:var(--gold);border-radius:3px 3px 0 0;min-height:2px}
+.bars .c span{font-size:10.5px;color:var(--muted);white-space:nowrap}.bars .c b{font-size:11px;font-weight:600}
+.bar{height:10px;border-radius:5px;background:#0d1322;overflow:hidden}.bar i{display:block;height:100%;background:#d9573a}
+@media (max-width:640px){aside.side{padding:14px}nav.menu{flex-direction:row;flex-wrap:wrap}nav.menu a{min-height:40px}.who{display:none}}
+</style>
+</head>
+<body>
+<div class="app" id="appView">
+  <aside class="side">
+    <div class="brand"><div class="lg">A</div><div><b>Aetherfall</b><small>Hệ thống game</small></div></div>
+    <nav class="menu" aria-label="Menu">
+      <a href="#stats">Thống kê</a>
+      <a href="#events">Sự kiện</a>
+      <a href="#wboss">Boss thế giới</a>
+      <a href="#guilds">Bang hội</a>
+      <a href="#market">Chợ</a>
+      <a href="#trades">Giao dịch</a>
+      <a href="#zones">Nghề &amp; hầm ngục</a>
+    </nav>
+    <div class="who"><span>Đăng nhập: <b id="meName">...</b> · <span id="meRole"></span></span><a href="/admin">← Trang quản trị chính</a><a href="/">Mở game</a></div>
+  </aside>
+  <main>
+    <div id="denied" class="panel" hidden><h2>Cần đăng nhập</h2><p class="sub" style="margin:0">Hãy đăng nhập ở <a href="/admin">trang quản trị chính</a> bằng tài khoản Admin hoặc GM, rồi quay lại trang này.</p></div>
+
+    <section class="sec" id="s-stats">
+      <div class="head"><div><h1>Thống kê</h1><div class="sub">Tài khoản mới, phân bố cấp, vàng và kinh tế</div></div></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="row">
+        <div class="panel"><h2>Tài khoản mới 14 ngày qua</h2><div class="bars" id="chSign"></div></div>
+        <div class="panel"><h2>Số nhân vật theo cấp</h2><div class="bars" id="chLv"></div></div>
+      </div>
+    </section>
+
+    <section class="sec" id="s-events">
+      <div class="head"><div><h1>Sự kiện</h1><div class="sub">Bật tắt nhân đôi kinh nghiệm, rơi đồ, vàng, khai thác, giảm giá cửa hàng. Mọi người đang online được báo ngay.</div></div></div>
+      <div class="panel"><h2>Đang chạy</h2><div class="tbl"><table><thead><tr><th>Sự kiện</th><th>Hệ số</th><th>Còn lại</th><th></th></tr></thead><tbody id="evRows"></tbody></table></div></div>
+      <form class="panel" id="evForm">
+        <h2>Bật sự kiện mới</h2>
+        <div class="form">
+          <label class="f" for="evType">Loại<select id="evType"></select></label>
+          <label class="f" for="evMult">Hệ số<input id="evMult" type="number" step="0.05" min="0.1" max="5" value="2"></label>
+          <label class="f" for="evMin">Thời gian<select id="evMin"><option value="30">30 phút</option><option value="60" selected>1 giờ</option><option value="120">2 giờ</option><option value="360">6 giờ</option><option value="1440">24 giờ</option><option value="4320">3 ngày</option></select></label>
+        </div>
+        <div class="sub" id="evHint">Với giảm giá cửa hàng, hệ số 0,5 nghĩa là giá còn một nửa. Bật lại cùng loại sẽ thay sự kiện cũ.</div>
+        <div class="acts"><button class="btn pri" type="submit" id="evGo">Bật sự kiện</button></div>
+      </form>
+    </section>
+
+    <section class="sec" id="s-wboss">
+      <div class="head"><div><h1>Boss thế giới</h1><div class="sub">Xuất hiện tự động theo giờ Việt Nam, hoặc triệu hồi thủ công. Tồn tại 30 phút ở Bãi Tế Thần.</div></div></div>
+      <div class="panel"><h2>Trạng thái</h2><div id="bossBox"></div>
+        <div class="acts"><button class="btn pri" id="bossSpawn" type="button">Triệu hồi ngay</button><button class="btn danger" id="bossCancel" type="button">Hủy boss</button></div></div>
+      <form class="panel" id="bossCfg">
+        <h2>Lịch tự động</h2>
+        <div class="form">
+          <label class="f" for="bossOn">Bật lịch tự động<input id="bossOn" type="checkbox"></label>
+          <label class="f" for="bossHours">Giờ xuất hiện (0-23, cách nhau bởi dấu phẩy)<input id="bossHours" placeholder="12,20"></label>
+        </div>
+        <div class="sub">Trước giờ boss 5 phút, game thông báo cho mọi người. Boss đã có mặt thì lịch tạm nghỉ.</div>
+        <div class="acts"><button class="btn pri" type="submit">Lưu lịch</button></div>
+      </form>
+      <div class="panel"><h2>10 lần gần nhất</h2><div class="tbl"><table><thead><tr><th>Bắt đầu</th><th>Kết thúc</th><th>Kết quả</th><th>Sát thương cao nhất</th></tr></thead><tbody id="bossHist"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-guilds">
+      <div class="head"><div><h1>Bang hội</h1><div class="sub">Bấm vào một bang để xem thành viên</div></div></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>Bang</th><th>Cấp</th><th>Quỹ</th><th>Thành viên</th><th>Trưởng bang</th><th>Lập lúc</th></tr></thead><tbody id="gRows"></tbody></table></div></div>
+      <div class="panel" id="gDetail" hidden></div>
+    </section>
+
+    <section class="sec" id="s-market">
+      <div class="head"><div><h1>Chợ người chơi</h1><div class="sub">Gỡ món vi phạm: đồ được trả về hộp thư của người bán</div></div></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>Món</th><th>Độ hiếm</th><th>Giá</th><th>Người bán</th><th>Đăng lúc</th><th>Hết hạn</th><th></th></tr></thead><tbody id="mRows"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-trades">
+      <div class="head"><div><h1>Nhật ký giao dịch</h1><div class="sub">150 giao dịch trực tiếp gần nhất</div></div></div>
+      <div class="panel"><div class="tbl"><table><thead><tr><th>Thời gian</th><th>Bên A</th><th>Bên B</th><th>Chi tiết</th></tr></thead><tbody id="tRows"></tbody></table></div></div>
+    </section>
+
+    <section class="sec" id="s-zones">
+      <div class="head"><div><h1>Nghề &amp; hầm ngục</h1><div class="sub">Cấp nghề của người chơi và các lượt hầm ngục đang diễn ra</div></div></div>
+      <div class="kpis" id="zKpis"></div>
+      <div class="panel"><h2>Hầm ngục đang chạy</h2><div id="zRuns"></div></div>
+      <div class="panel"><h2>Top nghề (50 người)</h2><div class="tbl"><table><thead id="zHead"></thead><tbody id="zRows"></tbody></table></div></div>
+    </section>
+  </main>
+</div>
+<div id="toast" hidden role="status"></div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=n=>Number(n||0).toLocaleString('vi-VN');
+const fmt=t=>t?new Date(t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'—';
+const ROLE={admin:'Admin',gm:'GM',player:'Người chơi'};
+const RAR={common:'Thường',rare:'Hiếm',epic:'Sử thi',legend:'Huyền thoại'};
+const RESULT={win:'Đã hạ',timeout:'Hết giờ'};
+let token=null, me=null, timer=null, state=null;
+try{ token=localStorage.getItem('af-token'); }catch(e){}
+
+function toast(msg,err){ const t=$('toast'); t.textContent=msg; t.className=err?'err':''; t.hidden=false; clearTimeout(t._h); t._h=setTimeout(()=>{ t.hidden=true; },3500); }
+async function api(path,body){
+  let r; try{ r=await fetch(path,{method:body?'POST':'GET',headers:Object.assign({'Content-Type':'application/json'},token?{Authorization:'Bearer '+token}:{}),body:body?JSON.stringify(body):undefined}); }
+  catch(e){ throw new Error('Không kết nối được máy chủ.'); }
+  let d=null; try{ d=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error((d&&d.error)||'Máy chủ gặp lỗi ('+r.status+').');
+  return d;
+}
+const dur=s=>{ s=Math.max(0,Math.round(s)); const h=Math.floor(s/3600), m=Math.floor(s%3600/60); return h?h+' giờ '+m+' phút':m+' phút '+(s%60)+' giây'; };
+const isAdmin=()=>me&&me.role==='admin';
+
+/* routing */
+const SECTIONS=['stats','events','wboss','guilds','market','trades','zones'];
+function cur(){ const h=location.hash.slice(1); return SECTIONS.includes(h)?h:'stats'; }
+function route(){ const c=cur(); SECTIONS.forEach(s=>{ $('s-'+s).classList.toggle('on',s===c); }); document.querySelectorAll('nav.menu a[href^="#"]').forEach(a=>{ if(a.getAttribute('href')==='#'+c) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); }); refresh(); }
+window.addEventListener('hashchange',route);
+function refresh(quiet){ const f={stats:loadStats,events:loadState,wboss:loadState,guilds:loadGuilds,market:loadMarket,trades:loadTrades,zones:loadZones}[cur()]; if(f) f().catch(e=>{ if(!quiet) toast(e.message,true); }); }
+
+/* stats */
+function bars(el,rows){
+  const max=Math.max(1,...rows.map(r=>r[1]));
+  el.innerHTML=rows.length?rows.map(r=>'<div class="c" title="'+esc(r[0])+': '+r[1]+'"><b>'+r[1]+'</b><i style="height:'+Math.max(2,r[1]/max*88)+'%"></i><span>'+esc(r[0])+'</span></div>').join(''):'<div class="empty">Chưa có dữ liệu.</div>';
+}
+async function loadStats(){
+  const d=await api('/api/admin/game/stats');
+  $('kpis').innerHTML=[['Bang hội',nf(d.guilds),'đang hoạt động'],['Món đang bán ở chợ',nf(d.market.n),'tổng giá '+nf(d.market.v)+' vàng'],['Tổng vàng trong game',nf(d.goldTotal),'trung bình '+nf(d.goldAvg)+' / nhân vật']]
+    .map(k=>'<div class="kpi"><span>'+k[0]+'</span><b>'+k[1]+'</b><small>'+k[2]+'</small></div>').join('');
+  bars($('chSign'),d.signups.map(r=>[String(r.d).slice(5),r.n]));
+  bars($('chLv'),d.levels.map(r=>['Lv'+r.l,r.n]));
+}
+
+/* events + world boss share one state call */
+async function loadState(){
+  state=await api('/api/admin/game/state');
+  const T=state.types;
+  if(!$('evType').options.length){ $('evType').innerHTML=T.map(t=>'<option value="'+t.type+'">'+esc(t.name)+'</option>').join(''); $('evType').dispatchEvent(new Event('change')); }
+  $('evRows').innerHTML=state.events.length?state.events.map(e=>'<tr><td><b>'+esc(e.name)+'</b></td><td>'+(e.type==='shop'?'giá '+Math.round(e.mult*100)+'%':'x'+e.mult)+'</td><td class="muted">'+dur(e.left)+'</td><td><button class="btn danger" type="button" data-stop="'+e.type+'"'+(isAdmin()?'':' disabled')+'>Tắt</button></td></tr>').join(''):'<tr><td colspan="4" class="empty">Không có sự kiện nào đang chạy.</td></tr>';
+  const b=state.wboss;
+  $('bossBox').innerHTML=b.state==='none'?'<div class="empty">Chưa có boss. '+(state.cfg.enabled?'Lịch tự động bật: '+state.cfg.hours.join('h, ')+'h (giờ Việt Nam).':'Lịch tự động đang tắt.')+'</div>'
+    :'<div class="kv"><b>'+esc(b.name)+'</b> · '+(b.state==='alive'?'<span class="pill p-warn">Đang sống</span> · còn '+dur(b.left):'<span class="pill p-on">Đã bị hạ</span>')+'</div>'+
+     '<div class="bar" style="margin:8px 0"><i style="width:'+Math.max(0,b.hp/Math.max(1,b.maxHp)*100)+'%"></i></div><div class="sub">'+nf(b.hp)+' / '+nf(b.maxHp)+' máu · '+b.fighters+' người đã đánh · bật bởi '+esc(b.by||'?')+'</div>';
+  $('bossSpawn').disabled=!isAdmin()||b.state!=='none'; $('bossCancel').disabled=!isAdmin()||b.state==='none';
+  if(document.activeElement!==$('bossHours')&&document.activeElement!==$('bossOn')){ $('bossOn').checked=!!state.cfg.enabled; $('bossHours').value=state.cfg.hours.join(','); }
+  $('bossHist').innerHTML=state.history.length?state.history.map(h=>'<tr><td class="muted">'+fmt(h.started_at)+'</td><td class="muted">'+fmt(h.ended_at)+'</td><td>'+esc(RESULT[h.result]||h.result)+'</td><td class="muted">'+(h.top.map((x,i)=>(i+1)+'. '+esc(x.name)+' ('+nf(x.dmg)+')').join(' · ')||'—')+'</td></tr>').join(''):'<tr><td colspan="4" class="empty">Chưa có lần nào.</td></tr>';
+}
+$('evType').addEventListener('change',()=>{ if(!state)return; const t=state.types.find(x=>x.type===$('evType').value); if(!t)return; $('evMult').min=t.min; $('evMult').max=t.max; $('evMult').value=t.def; });
+$('evForm').addEventListener('submit',async e=>{ e.preventDefault(); const btn=$('evGo'); btn.disabled=true;
+  try{ const r=await api('/api/admin/game/event/start',{type:$('evType').value,mult:Number($('evMult').value),minutes:Number($('evMin').value)}); toast(r.message); loadState(); }
+  catch(err){ toast(err.message,true); } finally{ btn.disabled=false; } });
+$('evRows').addEventListener('click',async e=>{ const b=e.target.closest('[data-stop]'); if(!b)return;
+  try{ const r=await api('/api/admin/game/event/stop',{type:b.dataset.stop}); toast(r.message); loadState(); }catch(err){ toast(err.message,true); } });
+$('bossSpawn').addEventListener('click',async()=>{ if(!confirm('Triệu hồi boss thế giới ngay bây giờ? Mọi người đang online sẽ được báo.'))return;
+  try{ const r=await api('/api/admin/game/wboss/spawn',{}); toast(r.message); loadState(); }catch(err){ toast(err.message,true); } });
+$('bossCancel').addEventListener('click',async()=>{ if(!confirm('Hủy boss thế giới hiện tại?'))return;
+  try{ const r=await api('/api/admin/game/wboss/cancel',{}); toast(r.message); loadState(); }catch(err){ toast(err.message,true); } });
+$('bossCfg').addEventListener('submit',async e=>{ e.preventDefault();
+  try{ const r=await api('/api/admin/game/wboss/config',{enabled:$('bossOn').checked,hours:$('bossHours').value.split(/[ ,;]+/).filter(Boolean).map(Number)}); toast(r.message); loadState(); }catch(err){ toast(err.message,true); } });
+
+/* guilds */
+async function loadGuilds(){
+  const d=await api('/api/admin/game/guilds');
+  $('gRows').innerHTML=d.guilds.length?d.guilds.map(g=>'<tr class="click" data-g="'+g.id+'" data-n="'+esc(g.name)+'"><td><b>'+esc(g.name)+'</b></td><td>'+g.level+'</td><td>'+nf(g.funds)+'</td><td>'+g.members+'</td><td>'+esc(g.leader||'?')+'</td><td class="muted">'+fmt(g.created_at)+'</td></tr>').join(''):'<tr><td colspan="6" class="empty">Chưa có bang hội nào.</td></tr>';
+}
+$('gRows').addEventListener('click',async e=>{ const tr=e.target.closest('tr[data-g]'); if(!tr)return; const id=tr.dataset.g, name=tr.dataset.n; const box=$('gDetail'); box.hidden=false; box.innerHTML='<p class="empty">Đang tải...</p>';
+  try{ const d=await api('/api/admin/game/guild/'+id);
+    box.innerHTML='<div class="acts" style="justify-content:space-between"><h2>'+esc(name)+' · '+d.members.length+' thành viên</h2><button class="btn danger" type="button" data-disband="'+id+'" data-n="'+esc(name)+'"'+(isAdmin()?'':' disabled')+'>Giải tán bang</button></div>'+
+     '<div class="tbl"><table><thead><tr><th>Tên</th><th>Chức</th><th>Cấp</th><th>Đóng góp</th><th>Vào lúc</th></tr></thead><tbody>'+d.members.map(m=>'<tr><td><b>'+esc(m.name)+'</b></td><td>'+(m.rank>=2?'Trưởng bang':m.rank===1?'Phó bang':'Thành viên')+'</td><td>'+m.level+'</td><td>'+nf(m.contrib)+'</td><td class="muted">'+fmt(m.joined_at)+'</td></tr>').join('')+'</tbody></table></div>'; }
+  catch(err){ box.innerHTML='<p class="empty">'+esc(err.message)+'</p>'; } });
+$('gDetail').addEventListener('click',async e=>{ const b=e.target.closest('[data-disband]'); if(!b)return; if(!confirm('Giải tán bang "'+b.dataset.n+'"? Không hoàn tác được. Quỹ bang sẽ mất.'))return;
+  try{ const r=await api('/api/admin/game/guild/'+b.dataset.disband+'/disband',{}); toast(r.message); $('gDetail').hidden=true; loadGuilds(); }catch(err){ toast(err.message,true); } });
+
+/* market + trades */
+async function loadMarket(){
+  const d=await api('/api/admin/game/market');
+  $('mRows').innerHTML=d.list.length?d.list.map(r=>'<tr><td><b>'+esc(r.name)+'</b> <span class="muted">cấp '+r.ilvl+(r.enh?' +'+r.enh:'')+'</span></td><td>'+esc(RAR[r.rarity]||r.rarity)+'</td><td>'+nf(r.price)+'</td><td>'+esc(r.seller)+'</td><td class="muted">'+fmt(r.created_at)+'</td><td class="muted">'+fmt(r.expires_at)+'</td><td><button class="btn danger" type="button" data-rm="'+r.id+'">Gỡ</button></td></tr>').join(''):'<tr><td colspan="7" class="empty">Chợ đang trống.</td></tr>';
+}
+$('mRows').addEventListener('click',async e=>{ const b=e.target.closest('[data-rm]'); if(!b)return; if(!confirm('Gỡ món này khỏi chợ? Đồ sẽ trả về hộp thư người bán.'))return;
+  try{ const r=await api('/api/admin/game/market/'+b.dataset.rm+'/remove',{}); toast(r.message); loadMarket(); }catch(err){ toast(err.message,true); } });
+async function loadTrades(){
+  const d=await api('/api/admin/game/trades');
+  $('tRows').innerHTML=d.trades.length?d.trades.map(t=>'<tr><td class="muted">'+fmt(t.created_at)+'</td><td>'+esc(t.a_name||'?')+'</td><td>'+esc(t.b_name||'?')+'</td><td class="muted">'+esc(t.detail||'')+'</td></tr>').join(''):'<tr><td colspan="4" class="empty">Chưa có giao dịch nào.</td></tr>';
+}
+
+/* professions + dungeon */
+async function loadZones(){
+  const d=await api('/api/admin/game/zones');
+  $('zKpis').innerHTML=[['Người có hồ sơ nghề',nf(d.total),'đã từng khai thác hoặc chế tạo'],['Lần thắng hầm ngục',nf(d.clears),'tổng cộng'],['Lượt đang chạy',nf(d.runs.length),'hầm ngục Tro Đen']].map(k=>'<div class="kpi"><span>'+k[0]+'</span><b>'+k[1]+'</b><small>'+k[2]+'</small></div>').join('');
+  $('zRuns').innerHTML=d.runs.length?d.runs.map(r=>'<div class="acts" style="padding:6px 0;border-bottom:1px solid var(--line2)"><span class="pill '+(r.state==='clear'?'p-on':'p-warn')+'">'+(r.state==='clear'?'Đã thắng':'Đợt '+r.wave+'/'+r.waves)+'</span><span><b>'+r.members.map(esc).join(', ')+'</b></span><span class="muted">còn '+r.left+' quái · '+dur(r.secs)+'</span></div>').join(''):'<div class="empty">Chưa có lượt nào.</div>';
+  $('zHead').innerHTML='<tr><th>Người chơi</th>'+d.profs.map(p=>'<th>'+esc(p.name)+'</th>').join('')+'<th>Thắng hầm ngục</th></tr>';
+  $('zRows').innerHTML=d.players.length?d.players.map(p=>'<tr><td><b>'+esc(p.name)+'</b></td>'+d.profs.map(x=>'<td>'+p.prof[x.id]+'</td>').join('')+'<td>'+p.clears+'</td></tr>').join(''):'<tr><td colspan="'+(d.profs.length+2)+'" class="empty">Chưa ai có hồ sơ nghề.</td></tr>';
+}
+
+/* start */
+(async function(){
+  if(!token){ $('denied').hidden=false; return; }
+  try{ const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+token}}); const d=await r.json(); if(!r.ok) throw new Error(d.error);
+    if(d.user.role!=='admin'&&d.user.role!=='gm'){ $('denied').hidden=false; return; }
+    me=d.user; $('meName').textContent=me.username; $('meRole').textContent=ROLE[me.role]||me.role; route(); timer=setInterval(()=>{ if(!document.hidden&&['events','wboss','zones'].includes(cur())) refresh(true); },5000); }
+  catch(e){ $('denied').hidden=false; }
+})();
+})();
+</script>
+</body>
+</html>

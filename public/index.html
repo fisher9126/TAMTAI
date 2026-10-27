@@ -418,7 +418,6 @@ sun.castShadow=true; const sm=isTouch?1024:2048; sun.shadow.mapSize.set(sm,sm);
 Object.assign(sun.shadow.camera,{left:-42,right:42,top:42,bottom:-42,near:1,far:160});
 sun.shadow.camera.updateProjectionMatrix(); sun.shadow.bias=-0.0006; sun.shadow.normalBias=0.03;
 scene.add(sun); scene.add(sun.target);
-window.AF_GFX={renderer,scene,camera,sun,sky,obstacles:null};
 
 function M(color,o){ return new THREE.MeshStandardMaterial(Object.assign({color,roughness:0.78,metalness:0.04,flatShading:true},o||{})); }
 function mesh(geo,mat,cast){ const m=new THREE.Mesh(geo,mat); m.castShadow=cast!==false; return m; }
@@ -449,7 +448,7 @@ function mesh(geo,mat,cast){ const m=new THREE.Mesh(geo,mat); m.castShadow=cast!
 })();
 
 /* ---------- props ---------- */
-const obstacles=[]; window.AF_GFX.obstacles=obstacles;
+const obstacles=[];
 const dummy=new THREE.Object3D();
 function okSpot(x,z,minVillage){
   if(Math.hypot(x,z)<(minVillage||15)) return false;
@@ -518,7 +517,7 @@ function okSpot(x,z,minVillage){
     const door=mesh(new THREE.BoxGeometry(0.9,1.7,0.1),wood); door.position.set(0,0.85,d/2+0.02); g.add(door);
     [-1.2,1.2].forEach(ox=>{ const wi=mesh(new THREE.BoxGeometry(0.7,0.7,0.1),win,false); wi.position.set(ox*(w/4),1.9,d/2+0.02); g.add(wi); });
     const ch=mesh(new THREE.BoxGeometry(0.5,1.4,0.5),M(0x8a7d72)); ch.position.set(w*0.25,4.6,-0.4); g.add(ch);
-    g.position.set(x,y,z); g.rotation.y=ry; g.userData.afHouse={w,d,i}; scene.add(g);
+    g.position.set(x,y,z); g.rotation.y=ry; scene.add(g);
     obstacles.push({x,z,r:Math.max(w,d)*0.62});
   });
   const well=new THREE.Group(); const wy=heightAt(4,-2);
@@ -599,7 +598,7 @@ function buildHumanoid(c){
     if(s===-1){ weaponSlot=new THREE.Group(); weaponSlot.position.y=-0.64; weaponSlot.rotation.x=PI/2; p.add(weaponSlot); }
     arms.push(p); });
   if(c.staff){ const st=mesh(new THREE.CylinderGeometry(0.05,0.05,2.2,6),M(0x7a5232)); st.position.y=0.2; st.rotation.x=0; weaponSlot.add(st); weaponSlot.rotation.x=0.1; }
-  const Hm={root,model,inner,headG,helmSlot,armorSlot,capeSlot,bootSlots,weaponSlot,legs,arms,cape:null}; root.userData.afH=Hm; return Hm;
+  return {root,model,inner,headG,helmSlot,armorSlot,capeSlot,bootSlots,weaponSlot,legs,arms,cape:null};
 }
 function rmat(r){ const c=RCOL[r]; const o={metalness:r==='common'?0.45:0.55,roughness:0.42}; if(r==='epic'||r==='legend'){ o.emissive=new THREE.Color(c); o.emissiveIntensity=r==='legend'?0.42:0.22; } return M(c,o); }
 function clearG(g){ while(g.children.length){ const ch=g.children.pop(); ch.traverse(o=>{ if(o.geometry)o.geometry.dispose(); }); } }
@@ -938,7 +937,7 @@ setInterval(()=>{ lockBtn.hidden=!running||isTouch;
   if(document.pointerLockElement===cvs&&(!running||invOpen||dialogOpen||frOpen||document.activeElement===$('chatIn')||(window.AF_SOCIAL&&window.AF_SOCIAL.isOpen&&window.AF_SOCIAL.isOpen()))) document.exitPointerLock(); },150);
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) for(const q in keys) keys[q]=false; });
 /* AF-COMBAT */ window.AF_CH={ R:R, get time(){return time;}, popNum:(x,y,z,t,c)=>popNum(x,y,z,t,c), heightAt:(x,z)=>heightAt(x,z), toast:(h,b)=>toast(h,b), chatLine:(k,h)=>chatLine(k,h), get others(){return others;}, get NET(){return NET;}, cvs:cvs, esc:(s)=>esc(s), die:()=>{ R.alive=false; $('death').hidden=false; closeInv(); }, isRunning:()=>running };
-/* AF-CLASS */ window.AF_CHX={ get P(){return P;}, get scene(){return scene;}, get cam(){return cam;}, PL:PL, get enemyById(){return enemyById;}, nearestEnemy:(d)=>nearestEnemy(d), faceToward:(e)=>faceToward(e), hitCone:(k,c,r,a)=>hitCone(k,c,r,a), canAct:()=>canAct(), spinRing:()=>spinRing(), addOther:(p)=>addOther(p), revive:()=>{ R.alive=true; $('death').hidden=true; }, buildHumanoid:(c)=>buildHumanoid(c) };
+/* AF-CLASS */ window.AF_CHX={ get P(){return P;}, get scene(){return scene;}, get cam(){return cam;}, PL:PL, get enemyById(){return enemyById;}, nearestEnemy:(d)=>nearestEnemy(d), faceToward:(e)=>faceToward(e), hitCone:(k,c,r,a)=>hitCone(k,c,r,a), canAct:()=>canAct(), spinRing:()=>spinRing(), addOther:(p)=>addOther(p), revive:()=>{ R.alive=true; $('death').hidden=true; } };
 cvs.addEventListener('wheel',e=>{ if(!running)return; e.preventDefault(); cam.dist=clamp(cam.dist+e.deltaY*0.01,3.2,15); },{passive:false});
 
 const joy={x:0,y:0,id:null};
@@ -1362,7 +1361,7 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/tree.js?v=9"></script>
 <script src="js/geardata.js?v=9"></script>
 <script src="js/explore.js?v=9"></script>
-<script src="js/quests.js?v=10"></script>
+<script src="js/quests.js?v=9"></script>
 <script src="js/skilltree.js?v=9"></script>
 <script src="js/gear.js?v=9"></script>
 <script src="js/auction.js?v=9"></script>
@@ -1372,13 +1371,12 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/equipdata.js?v=9"></script>
 <script src="js/equip.js?v=9"></script>
 <script src="js/world2.js?v=9"></script>
-<script src="js/move.js?v=10"></script>
+<script src="js/move.js?v=9"></script>
 <script src="js/instances.js?v=9"></script>
 <script src="js/faction.js?v=9"></script>
 <script src="js/pvp.js?v=9"></script>
 <script src="js/team.js?v=9"></script>
-<script src="js/visual.js?v=10"></script>
+<script src="js/visual.js?v=9"></script>
 <script src="js/monsters.js?v=9"></script>
-<script src="js/beauty.js?v=10"></script>
 </body>
 </html>
