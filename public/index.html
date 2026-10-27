@@ -1,3 +1,6 @@
+<!doctype html>
+<html lang="vi">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aetherfall Online</title>
@@ -13,6 +16,7 @@
   --body:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
   color-scheme:dark;
 }
+[hidden]{display:none!important}
 html,body{height:100%;margin:0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 body{background:var(--ink);color:var(--fg);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
@@ -217,6 +221,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 @media (prefers-reduced-motion:reduce){.toast{animation:none}.meter i,.expbar i{transition:none}}
 </style>
 
+</head>
+<body>
 <div id="game"></div>
 <div id="labels"></div>
 <div id="nums"></div>
@@ -1318,3 +1324,5 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 })();
 })();
 </script>
+</body>
+</html>
