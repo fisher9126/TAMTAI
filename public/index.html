@@ -273,11 +273,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
       <button class="sk" id="skP" type="button" aria-label="Bình máu"><span class="key">Q</span><svg viewBox="0 0 24 24" fill="none" stroke="#e0533f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3h4v5l4 6a5 5 0 0 1-4 7h-4a5 5 0 0 1-4-7l4-6z"/></svg><span class="cnt" id="potN">5</span><span class="cd"></span><span class="cdt"></span></button>
     </div>
     <div class="rbtns pa">
-      <div class="cams box" role="group" aria-label="Góc camera">
-        <button type="button" data-cam="iso" aria-pressed="true">Góc chéo</button>
-        <button type="button" data-cam="third" aria-pressed="false">Thứ ba</button>
-        <button type="button" data-cam="first" aria-pressed="false">Thứ nhất</button>
-      </div>
       <div class="brow"><button class="bag" id="chatToggle" type="button" hidden>Chat</button><button class="bag" id="frBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6 6 0 0 1 3.5 6"/></svg>Bạn bè <span class="badge" id="frN" hidden></span></button><button class="bag" id="bagBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Túi đồ <span id="bagN" style="color:var(--muted);font-weight:500"></span></button></div>
     </div>
   </div>
@@ -331,12 +326,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
       <div><span>Né</span><kbd>Space</kbd></div>
       <div><span>Bình máu</span><kbd>Q</kbd></div>
       <div><span>Chat</span><kbd>Enter</kbd></div>
-      <div><span>Đổi góc nhìn</span><kbd>Z</kbd></div>
       <div><span>Kho đồ</span><kbd>I</kbd></div>
       <div><span>Đóng bảng, trở lại chơi</span><kbd>Esc</kbd></div>
       <div><span>Nói chuyện với NPC</span><kbd>F</kbd></div>
     </div>
-    <p class="note" id="ctlTouch" hidden>Trên điện thoại: kéo cần điều khiển bên trái để đi, vuốt màn hình để xoay camera, bấm các nút kỹ năng để đánh.</p>
+    <p class="note" id="ctlTouch" hidden>Trên điện thoại: kéo cần điều khiển bên trái để đi, bấm các nút kỹ năng để đánh (tự nhắm quái gần nhất).</p>
     </details>
   </div>
 </div>
@@ -893,9 +887,9 @@ function unequip(slot){ const it=P.eq[slot]; if(!it)return; if(P.inv.length>=AF_
 function sell(id){ if(!P.inv.some(x=>x.id===id))return; NET.send({t:'sell',id}); sel=null; }
 
 /* ================= INPUT ================= */
-function setCam(m){ if(m==='iso'&&cam.mode!=='iso'){ cam.px=R.x+8; cam.py=heightAt(R.x,R.z)+14; cam.pz=R.z+8; } if(cam.mode==='iso'&&m==='third') cam.yaw=ISO_YAW; cam.mode=m; try{ localStorage.setItem('af-cam',m); }catch(_){} document.querySelectorAll('[data-cam]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cam===m))); $('cross').toggleAttribute('hidden',m!=='first'); }
+function setCam(m){ m='iso'; /* the game has one camera now: the Dungeons-style diagonal view */ if(m==='iso'&&cam.mode!=='iso'){ cam.px=R.x+8; cam.py=heightAt(R.x,R.z)+14; cam.pz=R.z+8; } if(cam.mode==='iso'&&m==='third') cam.yaw=ISO_YAW; cam.mode=m; try{ localStorage.setItem('af-cam',m); }catch(_){} document.querySelectorAll('[data-cam]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cam===m))); $('cross').toggleAttribute('hidden',m!=='first'); }
 document.querySelectorAll('[data-cam]').forEach(b=>b.addEventListener('click',()=>setCam(b.dataset.cam)));
-function cycleCam(){ setCam(cam.mode==='iso'?'third':cam.mode==='third'?'first':'iso'); }
+function cycleCam(){ setCam('iso'); }
 /* AF-CONTROLS */ function keyOf(e){ const c=e.code||''; if(c.indexOf('Key')===0) return c.slice(3).toLowerCase(); if(c.indexOf('Digit')===0) return c.slice(5); return e.key.toLowerCase(); }
 window.addEventListener('keydown',e=>{
   const ae=document.activeElement; if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')){ if(e.key==='Escape') ae.blur(); return; }
@@ -908,7 +902,6 @@ window.addEventListener('keydown',e=>{
   if(k==='escape'){ if(dialogOpen)closeDialog(); else if(invOpen)closeInv(); else if(frOpen)closeFriends(); return; }
   if(dialogOpen&&(k==='f'||k==='enter')){ closeDialog(); return; }
   if(k==='l'){ toggleMouseLock(); return; }
-  if(k==='z'){ cycleCam(); return; }
   if(k==='f'){ tryTalk(); return; }
   if(k==='j') doAttack();
   if(k==='1'&&!(window.AF_CLASS&&window.AF_CLASS.useKey(1))) doSpin();
@@ -1374,7 +1367,7 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/story.js?v=9"></script>
 <script src="js/tree.js?v=9"></script>
 <script src="js/geardata.js?v=9"></script>
-<script src="js/explore.js?v=9"></script>
+<script src="js/explore.js?v=10"></script>
 <script src="js/quests.js?v=10"></script>
 <script src="js/skilltree.js?v=9"></script>
 <script src="js/gear.js?v=9"></script>
@@ -1393,9 +1386,10 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/visual.js?v=10"></script>
 <script src="js/monsters.js?v=9"></script>
 <script src="js/armory.js?v=1"></script>
-<script src="js/iso.js?v=1"></script>
+<script src="js/iso.js?v=2"></script>
+<script src="js/vfx.js?v=1"></script>
 <script src="js/vendor/GLTFLoader.js?v=1"></script>
 <script src="js/vendor/SkeletonUtils.js?v=1"></script>
-<script src="js/dark.js?v=2"></script>
+<script src="js/dark.js?v=3"></script>
 </body>
 </html>

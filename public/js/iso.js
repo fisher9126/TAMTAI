@@ -27,21 +27,40 @@
   function uiBusy() { return !H.isRunning() || typing() || openPanels().length > 0 || !!(window.AF_SOCIAL && window.AF_SOCIAL.isOpen && window.AF_SOCIAL.isOpen()); }
   I.busy = uiBusy;
   /* close every open panel that has a close button; returns true when something was closed */
+  const fixed = (el) => /^(death|kicked|start|afCreate)$/.test(el.id);
+  function closeOne(el) {
+    if (fixed(el)) return false;
+    if (el.id === 'afArm' || el.id === 'inv') { if (X.invOpen) { X.closeInv(); return true; } return false; }
+    if (el.id === 'dialog') { if (X.dialogOpen) { X.closeDialog(); return true; } return false; }
+    if (el.id === 'friends') { X.closeFriends(); return true; }
+    if (el.classList.contains('afp') && window.AF_DOCK) { const c = window.AF_DOCK.list.find((d) => d.panel === el); if (c) { c.toggle(false); return true; } }
+    const b = Array.from(el.querySelectorAll(CLOSE)).find(vis) || el.querySelector(CLOSE);
+    if (b) { b.click(); return true; }
+    el.hidden = true; return true;
+  }
   function closeAll() {
     let n = 0;
-    openPanels().forEach((el) => {
-      if (/^(death|kicked|start|afCreate)$/.test(el.id)) return;
-      if (el.id === 'afArm' || el.id === 'inv') { if (X.invOpen) { X.closeInv(); n++; } return; }
-      if (el.id === 'dialog') { if (X.dialogOpen) { X.closeDialog(); n++; } return; }
-      if (el.id === 'friends') { X.closeFriends(); n++; return; }
-      const b = Array.from(el.querySelectorAll(CLOSE)).find(vis) || el.querySelector(CLOSE);
-      if (b) { b.click(); n++; }
-    });
+    openPanels().forEach((el) => { if (closeOne(el)) n++; });
     if (window.AF_SOCIAL && window.AF_SOCIAL.isOpen && window.AF_SOCIAL.isOpen()) { const b = document.querySelector('#afSoc [data-act="close"]'); if (b) { b.click(); n++; } }
     if (window.AF_DOCK) window.AF_DOCK.list.forEach((c) => { if (c.open) { c.toggle(false); n++; } });
     return n > 0;
   }
   I.closeAll = closeAll;
+  /* one panel at a time: when a panel opens, the panels that were already open close */
+  let shown = new Set(), pend = false;
+  function onePanel() {
+    pend = false;
+    const now = openPanels().filter((el) => !fixed(el));
+    const fresh = now.filter((el) => !shown.has(el));
+    if (fresh.length && now.length > fresh.length) now.filter((el) => shown.has(el)).forEach(closeOne);
+    shown = new Set(openPanels().filter((el) => !fixed(el)));
+  }
+  new MutationObserver(() => { if (!pend) { pend = true; setTimeout(onePanel, 0); } }).observe(document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
+  /* the quest tracker (quests.js) sits under the quest card in the right column instead of on top of the minimap */
+  setInterval(() => {
+    const tr = document.getElementById('afQT'), qc = document.querySelector('#hud .right .quest');
+    if (tr && qc && tr.previousElementSibling !== qc) { qc.after(tr); tr.classList.add('afQTin'); }
+  }, 700);
 
   /* ---------- mouse lock for the classic third-person camera ---------- */
   let relock = false;
@@ -79,7 +98,10 @@
   #afAim.foe i{border-color:#ff5a46;box-shadow:0 0 12px rgba(255,70,50,.9),inset 0 0 8px rgba(255,70,50,.6);transform:scale(.82)}
   #afAim.fire i{transform:scale(.7)}
   #afHint{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);z-index:70;padding:6px 14px;border-radius:4px;background:rgba(12,10,9,.88);border:1px solid rgba(224,122,58,.4);color:#e3d6bd;font:600 12.5px system-ui,sans-serif;pointer-events:none;opacity:0;transition:opacity .25s}
-  #afHint.on{opacity:1}`;
+  #afHint.on{opacity:1}
+  #afQT.afQTin{position:static!important;width:auto!important;margin-top:8px;max-width:240px;box-sizing:border-box;background:rgba(14,11,10,.86)!important;border:1px solid rgba(224,122,58,.32);border-radius:6px!important;color:#e3d6bd!important}
+  #afQT.afQTin b{color:#ffb066!important}
+  .cams{display:none!important}`;
   document.head.appendChild(css);
   const ret = document.createElement('div'); ret.id = 'afAim'; ret.innerHTML = '<i></i><b></b>'; document.body.appendChild(ret);
   const hintEl = document.createElement('div'); hintEl.id = 'afHint'; document.body.appendChild(hintEl);
@@ -206,7 +228,7 @@
     if (!(iso() && H.isRunning())) { CUT.uCut.value.z = 0; return; }
     const r = G.renderer, pr = r.getPixelRatio(), w = r.domElement.width, h = r.domElement.height;
     cutV.set(R.x, H.heightAt(R.x, R.z) + 1.0, R.z).project(G.camera);
-    CUT.uCut.value.set((cutV.x + 1) / 2 * w, (cutV.y + 1) / 2 * h, 120 * pr * (h / pr / 720 + 0.25));
+    CUT.uCut.value.set((cutV.x + 1) / 2 * w, (cutV.y + 1) / 2 * h, 92 * pr * (h / pr / 720 + 0.25));
     CUT.uCutZ.value = cutV.z * 0.5 + 0.5;
   }
 
@@ -239,5 +261,5 @@
   window.addEventListener('contextmenu', (e) => { if (H.isRunning() && iso() && !uiBusy()) e.preventDefault(); });
   /* tell the player once how to play */
   let told = false;
-  setInterval(() => { if (told || !H.isRunning() || !iso() || isTouch) return; told = true; setTimeout(() => H.toast('Góc nhìn chéo: di chuột để ngắm, giữ chuột trái để đánh, chuột phải dùng kỹ năng 1. Esc đóng mọi bảng. Z đổi góc nhìn.'), 2500); }, 1000);
+  setInterval(() => { if (told || !H.isRunning() || !iso() || isTouch) return; told = true; setTimeout(() => H.toast('Góc nhìn chéo: di chuột để ngắm, giữ chuột trái để đánh, chuột phải dùng kỹ năng 1. Esc đóng mọi bảng.'), 2500); }, 1000);
 })();

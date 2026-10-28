@@ -22,7 +22,7 @@
     if (S.fog) base.fog = { c: S.fog.color.clone(), near: S.fog.near, far: S.fog.far, den: S.fog.density };
     S.traverse((o) => { if (o.isLight && !o.userData.afSky) base.lights.push({ o, i: o.intensity, c: o.color.clone() }); });
   }
-  const NIGHT = new THREE.Color(0x0b1230), DUSK = new THREE.Color(0xff9a5a), TMP = new THREE.Color();
+  const NIGHT = new THREE.Color(0x2b3a5c) /* moonlit blue: night stays readable */, DUSK = new THREE.Color(0xff9a5a), TMP = new THREE.Color();
   /* hour 0..24 from the shared clock: 1 real hour = 1 game day, hour 12 = noon */
   const hourNow = () => (((Date.now() + E.off) % 3600000) / 3600000) * 24;
   const daylight = (h) => Math.max(0, Math.min(1, 0.5 + Math.sin(((h - 6) / 24) * Math.PI * 2) * 0.75));
@@ -32,10 +32,10 @@
   function applySky() {
     captureBase(); const h = hourNow(), d = daylight(h), wx = WX[E.weather.w] || WX.clear;
     const dim = d * (1 - wx.dark), twi = Math.max(0, 1 - Math.abs(d - 0.45) * 4) * 0.35;
-    base.lights.forEach((l) => { l.o.intensity = l.i * (0.18 + 0.82 * dim) + (flash > 0 ? 1.2 * flash : 0); TMP.copy(l.c).lerp(DUSK, twi); l.o.color.copy(TMP); });
+    base.lights.forEach((l) => { l.o.intensity = l.i * (0.55 + 0.45 * dim) + (flash > 0 ? 1.2 * flash : 0); TMP.copy(l.c).lerp(DUSK, twi); l.o.color.copy(TMP); });
     if (base.bg) { S.background.copy(base.bg).lerp(NIGHT, 1 - dim).lerp(DUSK, twi * 0.5); }
     if (S.fog && base.fog) {
-      S.fog.color.copy(base.fog.c).lerp(NIGHT, (1 - dim) * 0.9);
+      S.fog.color.copy(base.fog.c).lerp(NIGHT, (1 - dim) * 0.7);
       if (S.fog.isFogExp2) S.fog.density = base.fog.den / wx.fog; else { S.fog.near = base.fog.near * wx.fog; S.fog.far = base.fog.far * (0.45 + 0.55 * wx.fog); }
     }
     flash = Math.max(0, flash - 0.08);

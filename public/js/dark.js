@@ -32,14 +32,14 @@
   function lum(c) { return c.r * 0.3 + c.g * 0.59 + c.b * 0.11; }
 
   /* ================= 1. ATMOSPHERE ================= */
-  const PAL = { top: new T.Color(0x1d2633), hor: new T.Color(0x5d6266), fog: new T.Color(0x4f5458), night: new T.Color(0x05070d), sun: new T.Color(0xffb27a) };
+  const PAL = { top: new T.Color(0x3a5272), hor: new T.Color(0x8c949a), fog: new T.Color(0x666e74), night: new T.Color(0x16203a), sun: new T.Color(0xffc690) };
   let skyMat = null, baseLum = 1, envDim = 1;
   safe('atmosphere', () => {
     const r = G.renderer;
-    r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 0.95;
-    G.sun.color.setHex(0xd8dde6); G.sun.intensity = 1.25;
-    S.traverse((o) => { if (o.isHemisphereLight) { o.color.setHex(0x8b98ad); o.groundColor.setHex(0x2a2218); o.intensity = 0.42; } });
-    if (S.fog) { S.fog.color.copy(PAL.fog); S.fog.near = 18; S.fog.far = 105; }
+    r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 1.0;
+    G.sun.color.setHex(0xfff0dc); G.sun.intensity = 1.45;
+    S.traverse((o) => { if (o.isHemisphereLight) { o.color.setHex(0xb8c6dc); o.groundColor.setHex(0x5a4a38); o.intensity = 0.62; } });
+    if (S.fog) { S.fog.color.copy(PAL.fog); S.fog.near = 30; S.fog.far = 140; }
     if (S.background && S.background.isColor) S.background.copy(PAL.fog);
     baseLum = lum(PAL.fog);
     skyMat = new T.ShaderMaterial({
@@ -78,14 +78,26 @@
     const dim = Math.max(0, Math.min(1.1, lum(bg) / baseLum));
     skyMat.uniforms.dim.value = dim; skyMat.uniforms.hor.value.copy(bg).lerp(PAL.hor, 0.35 * dim); skyMat.uniforms.time.value += dt;
     skyMat.uniforms.sunDir.value.subVectors(G.sun.position, G.sun.target.position).normalize();
-    G.renderer.toneMappingExposure = 0.9 + 0.08 * Math.min(1, dim);
-    envDim = 0.12 + 0.88 * Math.min(1, dim);
+    G.renderer.toneMappingExposure = 1.3 - 0.3 * Math.min(1, dim); /* night is pushed up so the world stays readable */
+    envDim = 0.4 + 0.6 * Math.min(1, dim);
   });
   let envList = [], envT = 0;
   onTick((dt) => {
     envT -= dt; if (envT > 0 || !S.environment) return; envT = 1;
     if (!envList.length || Math.random() < 0.2) { envList = []; const seen = new Set(); S.traverse((o) => { const m = o.material; if (m && m.isMeshStandardMaterial && !seen.has(m)) { seen.add(m); envList.push(m); } }); }
     envList.forEach((m) => { m.envMapIntensity = envDim * (m.metalness > 0.4 ? 0.9 : 0.35); });
+  });
+  /* a soft lantern light that follows the player, stronger at night, so the area around you is always readable */
+  safe('lantern', () => {
+    const L = new T.PointLight(0xffd8a8, 0, 22, 1.6); L.castShadow = false; S.add(L);
+    const fill = new T.DirectionalLight(0xaebfe0, 0); S.add(fill); S.add(fill.target);
+    L.userData.afSky = true; fill.userData.afSky = true; /* explore.js leaves these two alone */
+    onTick((dt) => {
+      if (!H.isRunning()) return;
+      const R = H.R, y = H.heightAt(R.x, R.z), n = night() ? 1 : 0;
+      L.position.set(R.x, y + 4.2, R.z); L.intensity += ((n ? 2.6 : 0.6) - L.intensity) * Math.min(1, dt * 2);
+      fill.position.set(R.x - 20, y + 30, R.z + 25); fill.target.position.set(R.x, y, R.z); fill.intensity += ((n ? 0.7 : 0.25) - fill.intensity) * Math.min(1, dt * 2);
+    });
   });
   /* ash falling and embers rising around the camera */
   safe('ash', () => {
@@ -121,8 +133,8 @@
       c.setRGB(col.getX(i), col.getY(i), col.getZ(i)); c.getHSL(hsl);
       const x = pos.getX(i), z = pos.getZ(i), n = sin(x * 0.09 + cos(z * 0.07) * 2) * 0.5 + sin(z * 0.11 - x * 0.05) * 0.5;
       const green = hsl.h > 0.15 && hsl.h < 0.45 && hsl.s > 0.2;
-      if (green) { hsl.h = 0.17 + (hsl.h - 0.17) * 0.45 + n * 0.012; hsl.s *= 0.42; hsl.l = hsl.l * 0.52 + n * 0.03; }
-      else { hsl.s *= 0.6; hsl.l = hsl.l * 0.62 + n * 0.02; }
+      if (green) { hsl.h = 0.2 + (hsl.h - 0.2) * 0.6 + n * 0.012; hsl.s *= 0.55; hsl.l = hsl.l * 0.66 + n * 0.03; }
+      else { hsl.s *= 0.75; hsl.l = hsl.l * 0.74 + n * 0.02; }
       c.setHSL(hsl.h, Math.max(0, Math.min(1, hsl.s)), Math.max(0.02, Math.min(1, hsl.l)));
       col.setXYZ(i, c.r, c.g, c.b);
     }
@@ -182,7 +194,7 @@
     root.traverse((m) => {
       if (!m.isMesh) return;
       const key = m.material.uuid + ':' + k;
-      if (!tintCache.has(key)) { const c = m.material.clone(); c.color.setRGB(0.86 * k, 0.78 * k, 0.72 * k); c.roughness = 0.9; tintCache.set(key, c); }
+      if (!tintCache.has(key)) { const c = m.material.clone(); c.color.setRGB(Math.min(1, 0.98 * k + 0.12), Math.min(1, 0.92 * k + 0.1), Math.min(1, 0.86 * k + 0.08)); c.roughness = 0.9; tintCache.set(key, c); }
       m.material = tintCache.get(key);
     });
   }
@@ -271,7 +283,7 @@
     const kinds = ['tree_single_A', 'tree_single_B', 'trees_A_medium', 'trees_B_medium', 'tree_single_A', 'trees_B_large'].map((n) => { const m = part(V, n); if (!m) return null; const g = new T.Group(); g.add(m); fitTo(m, n.indexOf('trees_') === 0 ? 6.2 : 5.0, 'y'); return instFrom(g); }).filter(Boolean);
     if (!kinds.length) return 0;
     const darkMat = new Map();
-    const dm = (mt) => { if (!darkMat.has(mt)) { const c = mt.clone(); c.color.setRGB(0.42, 0.37, 0.3); c.roughness = 0.95; darkMat.set(mt, c); } return darkMat.get(mt); };
+    const dm = (mt) => { if (!darkMat.has(mt)) { const c = mt.clone(); c.color.setRGB(0.5, 0.48, 0.4); c.roughness = 0.95; darkMat.set(mt, c); } return darkMat.get(mt); };
     const buckets = kinds.map(() => []), M4 = new T.Matrix4(), pos = new T.Vector3(), q = new T.Quaternion(), sc = new T.Vector3(), r = rng(31);
     for (let i = 0; i < trunk.count; i++) { trunk.getMatrixAt(i, M4); M4.decompose(pos, q, sc); const k = Math.floor(r() * kinds.length); buckets[k].push({ x: pos.x, z: pos.z, s: sc.x, ry: r() * TAU }); }
     const d = new T.Object3D();
@@ -548,7 +560,7 @@
     const css = document.createElement('style');
     css.textContent = `
     :root{--ember:#e07a3a;--ember-2:#ffb066;--bone:#e3d6bd;--iron:rgba(14,12,11,.86);--iron-line:rgba(224,122,58,.32);--blood:#a8322a;--display-dark:'Cinzel','Trajan Pro','Times New Roman',serif}
-    #afVig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%)}
+    #afVig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 60%,rgba(0,0,0,.3) 100%)}
     #afMenu{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:41;display:flex;gap:3px;padding:5px;border-radius:6px;background:var(--iron);border:1px solid var(--iron-line);box-shadow:0 0 0 1px #000,0 10px 28px rgba(0,0,0,.6);max-width:calc(100vw - 680px);overflow-x:auto;scrollbar-width:none}
     #afMenu::-webkit-scrollbar{display:none}
     #afMenu[hidden]{display:none!important}
