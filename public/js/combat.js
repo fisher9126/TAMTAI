@@ -38,11 +38,18 @@
 
   /* ---------- block (right mouse button) ---------- */
   let blockLocal = 0;
-  H.cvs.addEventListener('pointerdown', (e) => {
-    if (e.button !== 2 || !H.isRunning() || !H.R.alive) return;
+  /* the right button blocks in the classic cameras; in the diagonal (Dungeons) camera it fires skill 1, and R blocks in every camera */
+  function block() {
+    if (!H.isRunning() || !H.R.alive) return;
     const t = performance.now(); if (t < blockLocal) return; blockLocal = t + 1500;
     send({ t: 'act', k: 'block' });
     H.popNum(H.R.x, H.heightAt(H.R.x, H.R.z) + 2.2, H.R.z, 'Thủ thế', 'info');
+  }
+  H.cvs.addEventListener('pointerdown', (e) => { if (e.button === 2 && !(window.AF_CHX && window.AF_CHX.cam && window.AF_CHX.cam.mode === 'iso')) block(); });
+  window.addEventListener('keydown', (e) => {
+    const tg = e.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.code === 'KeyR' && !(window.AF_ISO && window.AF_ISO.busy && window.AF_ISO.busy())) block();
   });
 
   /* ---------- server messages ---------- */

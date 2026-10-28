@@ -482,10 +482,12 @@ function shopList(p) {
     { id: 'pot1', kind: 'potion', name: 'Bình máu x1', price: pp },
     { id: 'pot10', kind: 'potion', name: 'Bình máu x10', price: Math.max(1, pp * 10 - Math.round(30 * shopMult())) }
   ];
-  ['common', 'rare'].forEach((rarity) => items.SLOTS.forEach((slot) => {
-    list.push({ id: slot + ':' + rarity, kind: 'gear', slot, rarity, ilvl: lv, price: gearPrice(rarity, lv),
-      item: { slot, rarity, ilvl: lv, enh: 0, name: items.BASE[slot] + ' ' + items.RNAME[rarity], stats: items.statsFor(slot, rarity, lv, 0) } });
-  }));
+  /* every weapon kind and armour style of the buyer's class (all classes before a character is made), common and rare */
+  const cls = p.prof && p.prof.cls;
+  ['common', 'rare'].forEach((rarity) => items.SLOTS.forEach((slot) => items.typesFor(slot, cls).forEach((type) => {
+    list.push({ id: slot + ':' + rarity + ':' + type, kind: 'gear', slot, rarity, type, ilvl: lv, price: gearPrice(rarity, lv),
+      item: { slot, rarity, type, v: 0, ilvl: lv, enh: 0, name: items.typeName(slot, type) + ' ' + items.RNAME[rarity], stats: items.statsFor(slot, rarity, lv, 0, type, 0) } });
+  })));
   return list;
 }
 function shopView(p) { return { t: 'market', kind: 'shop', level: shopLv(p), list: shopList(p) }; }
@@ -501,7 +503,7 @@ function shopBuy(p, m) {
     d.gold -= e.price; d.potions += n; sys(p, 'Đã mua ' + e.name + ' với giá ' + e.price + ' vàng.');
   } else {
     if (d.inv.length >= INV) return sys(p, 'Túi đồ đã đầy.');
-    d.gold -= e.price; const it = items.makeItem(e.slot, e.rarity, e.ilvl); d.inv.push(it);
+    d.gold -= e.price; const it = items.makeItem(e.slot, e.rarity, e.ilvl, null, p.prof && p.prof.cls, e.type); d.inv.push(it);
     sys(p, 'Đã mua ' + it.name + ' với giá ' + e.price + ' vàng.');
   }
   C.pushMe(p); C.saveNow(p);
@@ -537,7 +539,7 @@ function onEnhance(p, m) {
     if (enh >= 7 && zn && (zn.mats.ward | 0) > 0) { zn.mats.ward--; zn.dirty = true; warded = true; sys(p, 'Bùa bảo hộ đã được dùng: món đồ không bị tụt cấp.'); }
     else it.enh = enh - 1;
   }
-  it.stats = items.statsFor(it.slot, it.rarity, it.ilvl, it.enh || 0);
+  it.stats = items.restat(it);
   it.name = items.withEnhName(it.name, it.enh || 0);
   bump(p, 'enh', 1);
   if (ok) { p.soc.st.enhMax = Math.max(p.soc.st.enhMax, it.enh); p.socDirty = true; checkAch(p); }

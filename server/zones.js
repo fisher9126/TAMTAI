@@ -157,8 +157,8 @@ function craft(p, m) {
   for (const k in rc.mats) z.mats[k] -= rc.mats[k];
   let item = null, note = '';
   if (rc.out.kind === 'gear') {
-    item = items.makeItem(rc.out.slot, rc.out.rarity, rules.forgeIlvl(d.level, pr.lv));
-    if (Math.random() < 0.05 + pr.lv * 0.01) { item.enh = 1; item.stats = items.statsFor(item.slot, item.rarity, item.ilvl, 1); item.name = items.withEnhName(item.name, 1); note = 'Chế tác tinh xảo, tặng thêm +1!'; }
+    item = items.makeItem(rc.out.slot, rc.out.rarity, rules.forgeIlvl(d.level, pr.lv), null, p.prof && p.prof.cls);
+    if (Math.random() < 0.05 + pr.lv * 0.01) { item.enh = 1; item.stats = items.restat(item); item.name = items.withEnhName(item.name, 1); note = 'Chế tác tinh xảo, tặng thêm +1!'; }
     d.inv.push(item);
   } else if (rc.out.kind === 'potion') d.potions = Math.min(999, d.potions + rc.out.n);
   else if (rc.out.kind === 'cons') z.cons[rc.out.id] = (z.cons[rc.out.id] || 0) + 1;

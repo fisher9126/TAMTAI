@@ -53,7 +53,8 @@ function sanitizeSave(d, prev, allowGold) {
   out.seenIntro = !!d.seenIntro;
   return { data: out, warn };
 }
-function lookOf(data) { const eq = {}; items.SLOTS.forEach((s) => { eq[s] = data && data.eq && data.eq[s] ? data.eq[s].rarity : null; }); return eq; }
+function lookOf(data) { const eq = {}; items.SLOTS.forEach((s) => { eq[s] = data && data.eq && data.eq[s] ? data.eq[s].rarity : null; }); eq.wt = data && data.eq && data.eq.weapon && data.eq.weapon.type || null; return eq; }
+const clsOf = (p) => (p && p.prof && p.prof.cls) || null; /* the player's class, used to roll fitting gear */
 function loadChar(userId) {
   const r = db.get('SELECT data, x, z FROM characters WHERE user_id = ?', userId);
   if (!r) return null;
@@ -137,7 +138,7 @@ function questProgress(p, type) {
   if (r.gold) { d.gold += r.gold; got.push(r.gold + ' vàng'); }
   if (r.potions) { d.potions += r.potions; got.push(r.potions + ' bình máu'); }
   let item = null;
-  if (r.rarity && d.inv.length < rules.INV_SIZE) { item = items.makeItem(items.SLOTS[Math.floor(Math.random() * 5)], r.rarity, d.level); d.inv.push(item); }
+  if (r.rarity && d.inv.length < rules.INV_SIZE) { item = items.makeItem(items.SLOTS[Math.floor(Math.random() * 5)], r.rarity, d.level, null, clsOf(p)); d.inv.push(item); }
   d.quest = Math.min(d.quest + 1, rules.QUESTS.length - 1); d.qcount = 0;
   const up = r.exp ? addExp(p, r.exp) : 0;
   send(p, { t: 'quest', done: q.title, exp: r.exp || 0, rewards: got, item, levelUp: up ? d.level : null, next: d.quest });
@@ -152,11 +153,11 @@ function giveLoot(p, e) {
   };
   const slot = () => items.SLOTS[Math.floor(Math.random() * items.SLOTS.length)];
   if (e.d.boss) {
-    add('item', items.makeItem(slot(), 'legend', e.lv));
-    add('item', items.makeItem(slot(), Math.random() < 0.5 ? 'epic' : 'legend', e.lv));
+    add('item', items.makeItem(slot(), 'legend', e.lv, null, clsOf(p)));
+    add('item', items.makeItem(slot(), Math.random() < 0.5 ? 'epic' : 'legend', e.lv, null, clsOf(p)));
     add('potion');
   } else {
-    if (Math.random() < Math.min(1, e.d.drop * events.dropMult())) add('item', items.makeItem(slot(), items.rollRarity(e.d.bonus || 0), e.lv));
+    if (Math.random() < Math.min(1, e.d.drop * events.dropMult())) add('item', items.makeItem(slot(), items.rollRarity(e.d.bonus || 0), e.lv, null, clsOf(p)));
     if (Math.random() < 0.16) add('potion');
   }
   if (list.length) send(p, { t: 'loot', list });
@@ -187,6 +188,7 @@ function onPick(p, m) {
 function onEquip(p, m) {
   const d = p.data; const i = d.inv.findIndex((x) => x.id === m.id); if (i < 0) return;
   const it = d.inv[i]; const old = d.eq[it.slot];
+  if (!items.canUse(it, clsOf(p))) return sys(p, 'Món này dành cho ' + items.CLSNAME[items.itemClass(it)] + ', class của bạn không dùng được.');
   d.inv.splice(i, 1); d.eq[it.slot] = it; if (old) d.inv.splice(i, 0, old);
   pushMe(p);
 }

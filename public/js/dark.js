@@ -215,14 +215,14 @@
       const u = o.userData.afHouse, spec = BUILD[u.i % BUILD.length], src = part(V, spec[0]); if (!src) return;
       const g = new T.Group(); g.add(src); prep(src); fitTo(src, spec[1]); darken(src, 0.78, 0.7);
       const face = Math.atan2(-o.position.x, -o.position.z) + spec[2];
-      ground(g, o.position.x, o.position.z, face); S.add(g);
+      ground(g, o.position.x, o.position.z, face); g.userData.afOcc = true; S.add(g);
       o.visible = false; o.traverse((m) => { if (m.isMesh) m.castShadow = false; });
       // a mounted torch beside every door
       const fx = o.position.x + sin(face) * (spec[1] * 0.42), fz = o.position.z + cos(face) * (spec[1] * 0.42);
       const tr = part(P, 'torch_mounted'); if (tr) { prep(tr, false); fitTo(tr, 0.9, 'y'); const tg = new T.Group(); tg.add(tr); ground(tg, fx + cos(face) * 1.1, fz - sin(face) * 1.1, face); tg.position.y += 1.6; S.add(tg); fire(tg, 0, 0.55, 0.05, false, false); }
     });
     // the well
-    S.children.forEach((o) => { if (o.isGroup && Math.abs(o.position.x - 4) < 0.01 && Math.abs(o.position.z + 2) < 0.01) { const w = part(V, 'building_well_red'); if (w) { o.visible = false; const g = new T.Group(); g.add(w); prep(w); fitTo(w, 3.0); darken(w, 0.78, 0.7); ground(g, 4, -2, 0.4); S.add(g); } } });
+    S.children.forEach((o) => { if (o.isGroup && Math.abs(o.position.x - 4) < 0.01 && Math.abs(o.position.z + 2) < 0.01) { const w = part(V, 'building_well_red'); if (w) { o.visible = false; const g = new T.Group(); g.add(w); prep(w); fitTo(w, 3.0); darken(w, 0.78, 0.7); ground(g, 4, -2, 0.4); g.userData.afOcc = true; S.add(g); } } });
     // dark cobbles on the square
     const cob = canvasTex(512, 512, (g, w, h) => { const rr = rng(5); g.fillStyle = '#2a2826'; g.fillRect(0, 0, w, h); for (let i = 0; i < 520; i++) { const x = rr() * w, y = rr() * h, s = 10 + rr() * 14, v = 70 + Math.floor(rr() * 50); g.fillStyle = 'rgb(' + v + ',' + (v - 2) + ',' + (v - 6) + ')'; g.beginPath(); g.ellipse(x, y, s, s * (0.7 + rr() * 0.3), rr() * 3, 0, TAU); g.fill(); } }, 3, 3);
     const sq = new T.Mesh(new T.CircleGeometry(7.6, 48), Mat(0x8a8580, { map: cob })); sq.rotation.x = -PI / 2; sq.receiveShadow = true; sq.position.set(0, H.heightAt(0, 0) + 0.025, 0); S.add(sq);
@@ -236,7 +236,7 @@
     }
     // landmarks outside the square
     const marks = [['building_tower_A_red', 6.5, -17, -15], ['building_windmill_red', 8, -24, 6], ['building_market_red', 4.5, 13, -12], ['building_barracks_red', 6.5, 17, 14], ['tent', 3, -15, 15], ['tent', 3, 20, -2]];
-    marks.forEach(([n, size, x, z]) => { if (!free(x, z, size * 0.45)) return; const m = part(V, n); if (!m) return; const g = new T.Group(); prep(m); fitTo(m, size); darken(m, 0.75, 0.7); g.add(m); ground(g, x, z, Math.atan2(-x, -z)); S.add(g); block(x, z, size * 0.42); });
+    marks.forEach(([n, size, x, z]) => { if (!free(x, z, size * 0.45)) return; const m = part(V, n); if (!m) return; const g = new T.Group(); prep(m); fitTo(m, size); darken(m, 0.75, 0.7); g.add(m); ground(g, x, z, Math.atan2(-x, -z)); g.userData.afOcc = true; S.add(g); block(x, z, size * 0.42); });
     // props: barrels, crates, sacks, lumber, weapon racks, kegs, chests, banners
     const props = [['barrel', V, 1.0], ['crate_A_big', V, 1.0], ['sack', V, 0.8], ['resource_lumber', V, 1.6], ['weaponrack', V, 1.6], ['wheelbarrow', V, 1.5], ['keg', P, 1.0], ['crates_stacked', P, 1.6], ['chest', P, 1.0], ['barrel_large', P, 1.2], ['box_stacked', P, 1.3]];
     const spots = [];
@@ -278,7 +278,7 @@
     kinds.forEach((parts, k) => {
       const list = buckets[k]; if (!list.length) return;
       parts.forEach((pt) => {
-        const im = new T.InstancedMesh(pt.geo, dm(pt.mat), list.length); im.castShadow = true; im.receiveShadow = true;
+        const im = new T.InstancedMesh(pt.geo, dm(pt.mat), list.length); im.castShadow = true; im.receiveShadow = true; im.userData.afCut = true;
         list.forEach((t, i) => { d.position.set(t.x, H.heightAt(t.x, t.z) - 0.1, t.z); d.rotation.set(0, t.ry, 0); d.scale.setScalar(0.6 + t.s * 0.3); d.updateMatrix(); M4.multiplyMatrices(d.matrix, pt.mw); im.setMatrixAt(i, M4); });
         im.instanceMatrix.needsUpdate = true; S.add(im);
       });
@@ -301,6 +301,88 @@
   const NPC = { 0xf2a6c0: ['rogue', 'none'], 0x8ec5f2: ['mage', 'mage'], 0xc48a52: ['barbarian', 'smith'], 0xd9d9e6: ['knight', 'warrior', true], 0x7ddc8f: ['rogue_hooded', 'hunter'], 0xffd95a: ['barbarian', 'trader'], 0xb48cff: ['mage', 'healer'], 0x9a8f7a: ['rogue_hooded', 'none'], 0x6a9a5a: ['rogue_hooded', 'assassin'] };
   const RC = { common: 0x9ea5b0, rare: 0x3f8ad6, epic: 0x8f60d4, legend: 0xe08a2a };
   const skins = new Map(); // Hm -> skin
+  /* weapon kinds (items.js WTYPES) -> what each hand holds and which attack animations play. Names are KayKit meshes from any of the
+     five character files (all rigs share the hand bones); 'proc:' pieces are built here because KayKit has no bow, orb, mace or lantern. */
+  const WSPEC = {
+    sword: { r: '1H_Sword', l: 'SHIELD', set: '1h' }, greatsword: { r: '2H_Sword', set: '2h' }, axe: { r: '1H_Axe', l: 'Barbarian_Round_Shield', set: '1h' }, greataxe: { r: '2H_Axe', set: '2h' },
+    staff: { r: '2H_Staff', set: 'cast' }, wand: { r: '1H_Wand', set: 'cast' }, orb: { r: 'proc:orb', set: 'cast' }, runeblade: { r: '1H_Sword', l: 'Spellbook_open', tint: 0x86b4ff, set: '1h' },
+    bow: { l: 'proc:bow', set: 'bow' }, longbow: { l: 'proc:longbow', set: 'bow' }, crossbow: { r: '1H_Crossbow', set: 'xbow1' }, heavycrossbow: { r: '2H_Crossbow', set: 'xbow' },
+    daggers: { r: 'Knife', l: 'Knife_Offhand', set: 'dual' }, shortsword: { r: '1H_Sword', l: 'Knife_Offhand', set: 'dual' }, throwing: { r: 'Throwable', l: 'Knife_Offhand', set: 'dual' }, twinaxe: { r: '1H_Axe', l: '1H_Axe_Offhand', set: 'dual' },
+    scepter: { r: '1H_Wand', l: 'Spellbook_open', set: 'cast' }, holystaff: { r: '2H_Staff', tint: 0xffe0a0, set: 'cast' }, mace: { r: 'proc:mace', l: 'Spellbook', set: '1h' }, lantern: { r: '1H_Wand', l: 'proc:lantern', set: 'cast' }
+  };
+  const WDEF = { warrior: 'sword', mage: 'staff', healer: 'scepter', archer: 'heavycrossbow', assassin: 'daggers' };
+  const ATKSET = {
+    '1h': ['1H_Melee_Attack_Chop', '1H_Melee_Attack_Slice_Diagonal', '1H_Melee_Attack_Stab'], '2h': ['2H_Melee_Attack_Slice', '1H_Melee_Attack_Chop', '2H_Melee_Attack_Slice'],
+    dual: ['Dualwield_Melee_Attack_Chop', 'Dualwield_Melee_Attack_Slice', 'Dualwield_Melee_Attack_Stab'], cast: ['Spellcast_Shoot'], bow: ['2H_Ranged_Shoot'], xbow1: ['1H_Ranged_Shoot'], xbow: ['2H_Ranged_Shoot']
+  };
+  const WLIB = {};
+  function wlib(name) {
+    if (WLIB[name] !== undefined) return WLIB[name];
+    let src = null;
+    if (D.models) for (const k in D.models) { const n = byName(D.models[k], name); if (n && n.isMesh) { src = n; break; } }
+    WLIB[name] = src; return src;
+  }
+  function procPiece(kind) {
+    const g = new T.Group(); g.name = 'proc_' + kind;
+    const wood = Mat(0x5a3a22, { roughness: 0.8 }), metal = Mat(0x9aa0aa, { roughness: 0.35, metalness: 0.85 }), gold = Mat(0xd8a84a, { roughness: 0.35, metalness: 0.8 });
+    if (kind === 'bow' || kind === 'longbow') {
+      /* long axis along the hand's Y (up when held), the limbs bend toward -X (forward), the string sits behind the grip */
+      const L = kind === 'longbow' ? 1.0 : 0.72, A = Math.PI * 0.62, c = L * Math.cos(A / 2), sy = L * Math.sin(A / 2);
+      const arc = new T.Mesh(new T.TorusGeometry(L, kind === 'longbow' ? 0.04 : 0.035, 6, 28, A), wood); arc.rotation.z = Math.PI - A / 2; arc.position.x = L; g.add(arc);
+      const str = new T.Mesh(new T.CylinderGeometry(0.007, 0.007, sy * 2, 4), Mat(0xe8e0c8)); str.position.x = L - c; g.add(str);
+      const grip = new T.Mesh(new T.CylinderGeometry(0.055, 0.055, 0.24, 8), Mat(0x2a1a10)); g.add(grip);
+      g.rotation.z = -Math.PI / 2; /* KayKit hand slots: X is up and Y points forward while the arm hangs */
+    } else if (kind === 'orb') {
+      const h = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.3, 8), gold); h.position.y = 0.05; g.add(h);
+      const o = new T.Mesh(new T.SphereGeometry(0.16, 18, 12), new T.MeshStandardMaterial({ color: 0x7fb8ff, emissive: 0x3a7aff, emissiveIntensity: 1.4, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.9 })); o.position.y = 0.34; g.add(o);
+      const gl = glow(0x6aa8ff, 0.9, 0.55); gl.position.y = 0.34; g.add(gl); g.scale.setScalar(1.4);
+    } else if (kind === 'mace') {
+      const h = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.8, 8), wood); h.position.y = 0.28; g.add(h);
+      const hd = new T.Mesh(new T.DodecahedronGeometry(0.21, 0), Mat(0xb08a3a, { roughness: 0.4, metalness: 0.85 })); hd.position.y = 0.78; g.add(hd);
+      for (let i = 0; i < 6; i++) { const sp = new T.Mesh(new T.ConeGeometry(0.055, 0.17, 5), metal); const a = i / 6 * Math.PI * 2; sp.position.set(Math.cos(a) * 0.21, 0.78, Math.sin(a) * 0.21); sp.rotation.z = -Math.cos(a) * Math.PI / 2; sp.rotation.x = Math.sin(a) * Math.PI / 2; g.add(sp); }
+      g.scale.setScalar(1.45);
+    } else if (kind === 'lantern') {
+      const fr = new T.Mesh(new T.CylinderGeometry(0.11, 0.13, 0.26, 6, 1, true), new T.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.6, metalness: 0.6, wireframe: true })); fr.position.y = -0.18; g.add(fr);
+      const core = new T.Mesh(new T.SphereGeometry(0.08, 10, 8), new T.MeshStandardMaterial({ color: 0xffe2a0, emissive: 0xffb050, emissiveIntensity: 2 })); core.position.y = -0.18; g.add(core);
+      const gl = glow(0xffc070, 1.1, 0.6); gl.position.y = -0.18; g.add(gl);
+      const top = new T.Mesh(new T.ConeGeometry(0.13, 0.1, 6), gold); top.position.y = -0.02; g.add(top);
+      g.rotation.z = -Math.PI / 2; g.scale.setScalar(1.4);
+    }
+    g.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+    return g;
+  }
+  function makePiece(name, rarity, tint) {
+    if (!name) return null;
+    if (name === 'SHIELD') name = SHIELD[rarity] || 'Round_Shield';
+    if (name.indexOf('proc:') === 0) return procPiece(name.slice(5));
+    const src = wlib(name); if (!src) return null;
+    const m = src.clone(true); m.visible = true; m.castShadow = true;
+    if (tint) { m.material = m.material.clone(); m.material.color.setHex(tint); m.material.emissive = new T.Color(tint); m.material.emissiveIntensity = 0.25; }
+    return m;
+  }
+  const RIGHT = ['1H_Sword', '2H_Sword', '1H_Axe', '2H_Axe', '1H_Wand', '2H_Staff', 'Knife', '1H_Crossbow', '2H_Crossbow', 'Throwable', 'Mug'];
+  const LEFT = ['Round_Shield', 'Badge_Shield', 'Rectangle_Shield', 'Spike_Shield', 'Barbarian_Round_Shield', 'Spellbook', 'Spellbook_open', 'Knife_Offhand', '1H_Axe_Offhand', '1H_Sword_Offhand'];
+  function hands(sk) {
+    if (sk.hands) return sk.hands;
+    let r = null, l = null;
+    RIGHT.forEach((n) => { if (!r && sk.meshes[n]) r = sk.meshes[n].parent; });
+    LEFT.forEach((n) => { if (!l && sk.meshes[n]) l = sk.meshes[n].parent; });
+    sk.o.traverse((b) => { if (!r && /^handslot\.?r$/i.test(b.name)) r = b; if (!l && /^handslot\.?l$/i.test(b.name)) l = b; });
+    sk.hands = { r, l }; return sk.hands;
+  }
+  /* wear the model of a weapon kind; returns the animation set */
+  function arm(sk, wtype, rarity) {
+    const spec = WSPEC[wtype] || WSPEC.sword, key = wtype + ':' + (spec.l === 'SHIELD' ? rarity : '');
+    if (sk.wkey === key) return spec.set;
+    (sk.extra || []).forEach((m) => { if (m.parent) m.parent.remove(m); });
+    sk.extra = []; sk.wkey = key; sk.main = null;
+    Object.keys(sk.meshes).forEach((n) => { const base = n.replace(/_\d+$/, ''); if (/Sword|Shield|Staff|Wand|Spellbook|Crossbow|Knife|Throwable|Axe|Mug/.test(base)) sk.meshes[n].visible = false; });
+    const hd = hands(sk);
+    const r = makePiece(spec.r, rarity, spec.tint), l = makePiece(spec.l, rarity, spec.tint && spec.l && spec.l.indexOf('Spellbook') < 0 ? spec.tint : null);
+    if (r && hd.r) { hd.r.add(r); sk.extra.push(r); sk.main = r; }
+    if (l && hd.l) { hd.l.add(l); sk.extra.push(l); if (!sk.main) sk.main = l; }
+    return spec.set;
+  }
   function makeSkin(kind) {
     const src = D.models[kind]; if (!src || !T.SkeletonUtils) return null;
     const o = T.SkeletonUtils.clone(src);
@@ -324,7 +406,17 @@
     if (prev && prev !== a) a.crossFadeFrom(prev, opt.fade != null ? opt.fade : 0.18, false);
     a.play(); sk.cur = name; sk.once = !!opt.once;
   }
-  function dress(sk, role, eq, shieldRarity, forceHelm) {
+  function dress(sk, role, eq, shieldRarity, forceHelm, wtype) {
+    if (WDEF[role]) {
+      sk.set = arm(sk, WSPEC[wtype] ? wtype : WDEF[role], shieldRarity || 'common');
+      Object.keys(sk.meshes).forEach((n) => {
+        const m = sk.meshes[n], base = n.replace(/_\d+$/, '');
+        if (/Helmet/.test(base)) m.visible = !!(forceHelm || (eq && eq.helmet));
+        else if (/Cape/.test(base)) m.visible = !!(forceHelm || (eq && eq.cape));
+        else if (ALWAYS.includes(base)) m.visible = true;
+      });
+      return;
+    }
     const show = new Set(SHOW[role] || []);
     if (role === 'warrior' && sk.kind === 'knight') show.add(SHIELD[shieldRarity] || 'Round_Shield');
     Object.keys(sk.meshes).forEach((n) => {
@@ -338,7 +430,7 @@
   }
   function weaponGlow(sk, rarity) {
     if (!rarity || rarity === 'common') { if (sk.glow) sk.glow.visible = false; return; }
-    let hand = null; Object.keys(sk.meshes).forEach((n) => { const m = sk.meshes[n]; if (m.visible && /Sword|Staff|Wand|Crossbow|Knife/.test(n) && !/Offhand/.test(n) && !hand) hand = m; });
+    let hand = sk.main || null; if (!hand) Object.keys(sk.meshes).forEach((n) => { const m = sk.meshes[n]; if (m.visible && /Sword|Staff|Wand|Crossbow|Knife/.test(n) && !/Offhand/.test(n) && !hand) hand = m; });
     if (!hand) return;
     if (!sk.glow) { sk.glow = glow(0xffffff, 1.2, 0.7); }
     if (sk.glow.parent !== hand) hand.add(sk.glow);
@@ -362,7 +454,7 @@
       let sk = skins.get(X.PL);
       if (sk && sk.kind !== kind) { X.PL.root.remove(sk.wrap); skins.delete(X.PL); sk = null; }
       if (!sk) sk = attach(X.PL, kind);
-      if (sk) { sk.cls = cls; const eq = X.P && X.P.eq; dress(sk, cls, eq, eq && eq.weapon ? eq.weapon.rarity : 'common'); weaponGlow(sk, eq && eq.weapon ? eq.weapon.rarity : null); if (cls === 'healer') sk.o.traverse((m) => { if (m.isMesh && !m.userData.tint) { m.userData.tint = 1; m.material.color.setRGB(1.0, 0.97, 0.88); } }); }
+      if (sk) { sk.cls = cls; const eq = X.P && X.P.eq, w = eq && eq.weapon; dress(sk, cls, eq, w ? w.rarity : 'common', false, w && w.type && (!window.AF_ITEMS || window.AF_ITEMS.canUse(w, cls)) ? w.type : null); weaponGlow(sk, eq && eq.weapon ? eq.weapon.rarity : null); if (cls === 'healer') sk.o.traverse((m) => { if (m.isMesh && !m.userData.tint) { m.userData.tint = 1; m.material.color.setRGB(1.0, 0.97, 0.88); } }); }
       hideOld(X.PL);
     }
     // other players
@@ -370,7 +462,7 @@
       if (!o || !o.H) return; const app = APPS.get(o.H), cls = (app && app.cls) || 'warrior', kind = KIND[cls] || 'knight';
       let sk = skins.get(o.H); if (sk && sk.kind !== kind) { o.H.root.remove(sk.wrap); skins.delete(o.H); sk = null; }
       if (!sk) sk = attach(o.H, kind);
-      if (sk) { sk.cls = cls; const eq = { helmet: o.eq && o.eq.helmet, cape: o.eq && o.eq.cape }; dress(sk, cls, eq, o.eq && o.eq.weapon || 'common'); weaponGlow(sk, o.eq && o.eq.weapon); }
+      if (sk) { sk.cls = cls; const eq = { helmet: o.eq && o.eq.helmet, cape: o.eq && o.eq.cape }; dress(sk, cls, eq, o.eq && o.eq.weapon || 'common', false, o.eq && o.eq.wt); weaponGlow(sk, o.eq && o.eq.weapon); }
       hideOld(o.H);
     });
     // NPCs (story NPCs and the village chief)
@@ -394,7 +486,7 @@
     if (R.spinT >= 0) { const n = SPIN[cls]; if (sk.cur !== n) play(sk, n, { once: true, ts: 1.8, fade: 0.08 }); return; }
     if (R.atkT >= 0) {
       const fresh = sk.lastAtk < 0 || R.atkT < sk.lastAtkT - 0.02; sk.lastAtk = R.atkT; sk.lastAtkT = R.atkT;
-      const list = ATK[cls] || ATK.warrior, n = list[(R.combo | 0) % list.length];
+      const list = ATKSET[sk.set] || ATK[cls] || ATK.warrior, n = list[(R.combo | 0) % list.length];
       if (fresh || sk.cur !== n) { const clip = D.clips[n]; play(sk, n, { once: true, restart: true, ts: clip ? clip.duration / 0.5 : 2, fade: 0.06 }); }
       return;
     }
@@ -405,18 +497,18 @@
     if (R.dashT >= 0) { play(sk, 'Running_A', { ts: 1.8 }); return; }
     if (sk.spd > 7.2) play(sk, 'Running_A', { ts: Math.min(1.5, sk.spd / 7.5) });
     else if (sk.spd > 0.6) play(sk, 'Walking_A', { ts: Math.min(1.6, 0.5 + sk.spd / 4.5) });
-    else play(sk, cls === 'warrior' ? 'Idle' : 'Idle');
+    else play(sk, sk.set === '2h' ? '2H_Melee_Idle' : 'Idle');
   }
   function driveOther(sk, o, dt) {
     const cls = sk.cls || 'warrior', an = o.anim | 0;
     if (an === 5) { if (sk.cur !== 'Death_A') play(sk, 'Death_A', { once: true }); return; }
     if (an === 4) { if (sk.cur !== 'Dodge_Forward') play(sk, 'Dodge_Forward', { once: true, ts: 1.9 }); return; }
     if (an === 3) { play(sk, SPIN[cls], { ts: 1.6 }); return; }
-    if (an === 2) { const list = ATK[cls] || ATK.warrior; if (!list.includes(sk.cur) || !sk.actions[sk.cur].isRunning()) play(sk, list[Math.floor(Math.random() * list.length)], { once: true, restart: true, ts: 2 }); return; }
+    if (an === 2) { const list = ATKSET[sk.set] || ATK[cls] || ATK.warrior; if (!list.includes(sk.cur) || !sk.actions[sk.cur].isRunning()) play(sk, list[Math.floor(Math.random() * list.length)], { once: true, restart: true, ts: 2 }); return; }
     if (an === 7) { play(sk, 'Running_A', { ts: 1.8 }); return; }
     if (an === 6) { play(sk, 'Running_A', { ts: 1.2 }); return; }
     if (an === 1) { play(sk, 'Walking_A', { ts: 1.2 }); return; }
-    play(sk, 'Idle');
+    play(sk, sk.set === '2h' ? '2H_Melee_Idle' : 'Idle');
   }
   onTick((dt) => {
     if (!D.ready) return;

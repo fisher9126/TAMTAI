@@ -114,7 +114,7 @@ const ops = {
     }
     if (r.item) {
       const slot = r.item[0] === 'any' ? API.items.SLOTS[Math.floor(Math.random() * API.items.SLOTS.length)] : r.item[0];
-      const it = API.items.makeItem(slot, r.item[1], Math.max(1, lv)); d.inv.push(it); sum.items.push(it);
+      const it = API.items.makeItem(slot, r.item[1], Math.max(1, lv), null, p.prof && p.prof.cls); d.inv.push(it); sum.items.push(it);
     }
     d.gold += sum.gold; d.potions = Math.min(999, d.potions + sum.potions);
     if (p.zn && Object.keys(sum.mats).length) API.giveMats(p.zn, sum.mats);

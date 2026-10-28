@@ -170,7 +170,7 @@
     if (!rows.length) return h + '<p class="afn">Bạn chưa có trang bị nào.</p>';
     rows.forEach(([where, it]) => {
       const e = it.enh || 0, max = e >= IT.MAX_ENH;
-      const nx = max ? '' : '<br><small>Lên +' + (e + 1) + ': ' + esc(statTxt({ stats: IT.statsFor(it.slot, it.rarity, it.ilvl, e + 1) })) + ' · tỉ lệ ' + Math.round(IT.enhChance(e) * 100) + '% · ' + num(IT.enhCost(it)) + ' vàng</small>';
+      const nx = max ? '' : '<br><small>Lên +' + (e + 1) + ': ' + esc(statTxt({ stats: IT.statsFor(it.slot, it.rarity, it.ilvl, e + 1, it.type, it.v) })) + ' · tỉ lệ ' + Math.round(IT.enhChance(e) * 100) + '% · ' + num(IT.enhCost(it)) + ' vàng</small>';
       h += '<div class="afit"><span><small>' + where + '</small><br>' + itemHtml(it) + nx + '</span><span>' + (max ? '<small>Tối đa</small>' : '<button class="af" data-act="f-enh" data-id="' + esc(it.id) + '"' + (pl.gold < IT.enhCost(it) ? ' disabled' : '') + '>Cường hóa</button>') + '</span></div>';
     });
     return h;
