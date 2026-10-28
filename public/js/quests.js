@@ -41,7 +41,7 @@
         const lk = NPC_LOOK[color] || [0xf2c9a0, 0x4a3626];
         const Hm = X.buildHumanoid({ skin: lk[0], shirt: color, pants: 0x3a3348, hair: lk[1], beard: color === 0xc48a52 || color === 0xb48cff });
         Hm.legs.forEach((l) => { l.rotation.x = 0; }); Hm.arms[0].rotation.z = 0.12; Hm.arms[1].rotation.z = -0.12;
-        Hm.root.userData.afNpc = true; return Hm.root;
+        Hm.root.userData.afNpc = true; Hm.root.userData.afNpcColor = color; return Hm.root;
       } catch (err) { console.warn('[quests] figure fallback', err); }
     }
     const g = new THREE.Group(), M = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true });
