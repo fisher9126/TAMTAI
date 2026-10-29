@@ -87,7 +87,23 @@
   .afq-mut{color:#aab6d8}.afq-h{font-size:12px;letter-spacing:.06em;color:#ffd96a;margin:12px 0 4px}
   .afq-btn{background:#f0bf4c;color:#241a05;border:2px solid #241a05;border-radius:10px;padding:5px 11px;font:700 12px system-ui,sans-serif;cursor:pointer;margin:3px 4px 3px 0}
   .afq-btn.g{background:#e9edf8}.afq-btn.on{background:#fff3c4;box-shadow:0 0 0 2px #f0bf4c}.afq-btn[disabled]{opacity:.4;cursor:default}
-  #afQP[hidden],#afQT[hidden],#afQB[hidden],#afQD[hidden],#afQJ[hidden]{display:none}`;
+  #afQP[hidden],#afQT[hidden],#afQB[hidden],#afQD[hidden],#afQJ[hidden]{display:none}
+  #afQJ{width:min(96vw,900px)!important}
+  .afqLog{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-top:8px;min-height:360px}
+  .afqList{border-right:1px solid rgba(255,255,255,.08);padding-right:10px;max-height:62vh;overflow:auto}
+  .afqL{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:8px;width:100%;padding:8px 10px;margin:3px 0;border-radius:6px;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+  .afqL:hover{border-color:rgba(255,190,120,.5)}.afqL.on{background:linear-gradient(90deg,rgba(224,122,58,.28),rgba(224,122,58,.06));border-color:#e07a3a}
+  .afqL small{white-space:nowrap;color:#ffd96a}.afqL small.r{color:#8ef0d0}.afqL small.o{color:#aab6d8}.afqTr{color:#ffd25a}
+  .afqDet{max-height:62vh;overflow:auto}.afqT{font:800 19px 'Cinzel','Times New Roman',serif;color:#ffb066}
+  .afqStory{margin:8px 0;padding:8px 10px;border-left:2px solid #e07a3a;background:rgba(224,122,58,.07);font-style:italic}
+  .afqBar{position:relative;height:16px;border-radius:4px;background:rgba(0,0,0,.5);overflow:hidden;margin:8px 0}.afqBar i{display:block;height:100%;background:linear-gradient(90deg,#8a3a18,#e08a44)}.afqBar span{position:absolute;inset:0;text-align:center;font:700 11px/16px system-ui}
+  .afqSteps{margin:4px 0;padding-left:20px}.afqSteps li{margin:4px 0}.afqWhere{margin-top:6px;padding:6px 10px;border-radius:6px;background:rgba(255,210,90,.1);color:#ffe9a8}.afqRew{color:#e3d6bd}
+  #afQT{pointer-events:auto!important}#afQT b{display:block;margin-top:4px;font:700 10.5px system-ui;letter-spacing:.1em;text-transform:uppercase}
+  .afqTi{cursor:pointer;padding:2px 4px;border-radius:4px}.afqTi:hover{background:rgba(255,210,90,.12)}.afqTi.tr{color:#ffd25a}.afqTi.r{color:#8ef0d0}
+  .afqHint{margin-top:4px;font-size:10.5px;color:#9a8f80}
+  #hud .right .quest{display:none!important}
+  #afQT.afQTin{min-width:240px}
+  @media (max-width:760px){.afqLog{grid-template-columns:1fr}.afqList{border:0;max-height:none}}`;
   document.head.appendChild(css);
   const prompt = document.createElement('div'); prompt.id = 'afQP'; prompt.hidden = true;
   const track = document.createElement('div'); track.id = 'afQT'; track.hidden = true;
@@ -96,6 +112,8 @@
   const jr = document.createElement('div'); jr.id = 'afQJ'; jr.hidden = true;
   document.body.append(prompt, track, btn, dlg, jr);
   [dlg, jr, btn].forEach((el) => ['keydown', 'keyup', 'pointerdown', 'mousedown'].forEach((ev) => el.addEventListener(ev, (e) => e.stopPropagation())));
+  ['pointerdown', 'mousedown'].forEach((ev) => track.addEventListener(ev, (e) => e.stopPropagation()));
+  track.addEventListener('click', (e) => { const r = e.target.closest('[data-k]'); if (!r || !window.AF_NAV) return; window.AF_NAV.track(r.dataset.k); track.dataset.h = ''; renderTracker(); H.toast('Đang chỉ đường · đi theo mũi tên vàng'); });
 
   function rewardText(q) {
     const r = q.reward, bits = [];
@@ -127,11 +145,42 @@
     else if (a === 'turn') send({ t: 'zone', op: 'qturn', id: b.dataset.id, c: Number(b.dataset.c) });
   });
 
+  /* quest log: main and side quests on the left, guidance for the selected one on the right */
+  function questLog() {
+    const N = window.AF_NAV, E = N.entries(), cur = N.current(), sel = (Q.sel && N.find(Q.sel)) || cur || E.main[0] || E.side[0];
+    const titleOf = (en) => en.kind === 'main' ? RU.QUESTS[X.P.quest].title : en.q.title;
+    const stateOf = (en) => {
+      if (en.kind === 'main') { const q = RU.QUESTS[X.P.quest]; return X.P.qcount >= q.need ? ['Giao thưởng', 'r'] : [X.P.qcount + '/' + q.need, '']; }
+      if (en.kind === 'offer') return [en.locked ? 'Cấp ' + en.q.lv : 'Chưa nhận', 'o'];
+      const ok = en.a.p >= en.q.need; return [ok ? 'Giao thưởng' : progText(en.q), ok ? 'r' : ''];
+    };
+    const row = (en) => { const s = stateOf(en), on = sel && sel.key === en.key, tr = cur && cur.key === en.key;
+      return '<button class="afqL' + (on ? ' on' : '') + '" data-a="pick" data-k="' + esc(en.key) + '"><span>' + (tr ? '<b class="afqTr">➤</b> ' : '') + esc(titleOf(en)) + '</span><small class="' + s[1] + '">' + esc(s[0]) + '</small></button>'; };
+    let h = '<div class="afqLog"><div class="afqList"><div class="afq-h">NHIỆM VỤ CHÍNH</div>' + (E.main.length ? E.main.map(row).join('') : '<div class="afq-mut" style="padding:6px">Đã xong tuyến chính hiện có.</div>') +
+      '<div class="afq-h">NHIỆM VỤ PHỤ</div>' + (E.side.length ? E.side.map(row).join('') : '<div class="afq-mut" style="padding:6px">Chưa có nhiệm vụ phụ. Tìm người có dấu <b>!</b> trên đầu.</div>') + '</div><div class="afqDet">';
+    if (!sel) h += '<div class="afq-mut">Chọn một nhiệm vụ để xem hướng dẫn.</div>';
+    else {
+      const t = N.target(sel), steps = N.steps(sel), dist = t ? Math.round(Math.hypot(t.x - H.R.x, t.z - H.R.z)) : null;
+      let title, sub, story, rew = '', prog = null;
+      if (sel.kind === 'main') { const q = RU.QUESTS[X.P.quest]; title = q.title; sub = 'Nhiệm vụ chính · Trưởng làng Hollis'; story = q.desc; rew = [q.reward.exp && q.reward.exp + ' EXP', q.reward.gold && q.reward.gold + ' vàng', q.reward.potions && q.reward.potions + ' bình máu', q.reward.rarity && 'trang bị ' + window.AF_ITEMS.RNAME[q.reward.rarity]].filter(Boolean).join(' · '); prog = [Math.min(X.P.qcount, q.need), q.need]; }
+      else { const q = sel.q; title = q.title; sub = (/^(s|c)\d/.test(q.id) ? 'Nhiệm vụ chính' : q.daily ? 'Nhiệm vụ hằng ngày' : 'Nhiệm vụ phụ') + ' · ' + q.ch + ' · cấp ' + q.lv; story = sel.kind === 'offer' ? q.offer : q.offer; rew = rewardText(q); if (sel.kind === 'story' && q.obj.k !== 'none') prog = [Math.min(sel.a.p, Math.max(1, q.need)), Math.max(1, q.need)]; }
+      h += '<div class="afqT">' + esc(title) + '</div><div class="afq-mut">' + esc(sub) + '</div>';
+      h += '<div class="afqStory">' + esc(story || '') + '</div>';
+      if (prog) h += '<div class="afqBar"><i style="width:' + Math.round(prog[0] / prog[1] * 100) + '%"></i><span>' + prog[0] + ' / ' + prog[1] + '</span></div>';
+      h += '<div class="afq-h">HƯỚNG DẪN</div><ol class="afqSteps">' + steps.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ol>';
+      if (t) h += '<div class="afqWhere">📍 ' + esc(t.label) + ' · ' + esc(N.placeName(t.x, t.z)) + ' (' + Math.round(t.x) + ', ' + Math.round(t.z) + ') · cách ' + dist + 'm</div>';
+      if (rew) h += '<div class="afq-h">PHẦN THƯỞNG</div><div class="afqRew">' + esc(rew) + '</div>';
+      h += '<div style="margin-top:10px">' + (cur && cur.key === sel.key ? '<button class="afq-btn on" disabled>Đang chỉ đường</button>' : '<button class="afq-btn" data-a="trk" data-k="' + esc(sel.key) + '">Chỉ đường tới đây</button>') +
+        (sel.kind === 'story' ? '<button class="afq-btn g" data-a="drop" data-id="' + sel.q.id + '">Bỏ nhiệm vụ</button>' : '') + '</div>';
+    }
+    return h + '</div></div>';
+  }
   function renderJournal() {
     if (!Q.open) return;
-    const tabs = [['act', 'Đang làm'], ['story', 'Cốt truyện'], ['title', 'Danh hiệu'], ['bes', 'Sổ quái vật']];
+    const tabs = [['act', 'Nhiệm vụ'], ['story', 'Cốt truyện'], ['title', 'Danh hiệu'], ['bes', 'Sổ quái vật']];
     let h = '<div class="afq-row" style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Nhật ký</b><button class="afq-btn g" data-a="x">Đóng (N)</button></div>';
     h += '<div>' + tabs.map((t) => '<button class="afq-btn' + (Q.tab === t[0] ? ' on' : '') + '" data-a="tab" data-v="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+    if (Q.tab === 'act' && window.AF_NAV) { h += questLog(); jr.innerHTML = h; return; }
     if (Q.tab === 'act') {
       h += Q.st.act.length ? Q.st.act.map((a) => { const q = byId[a.id]; return '<div class="afq-row"><b>' + esc(q.title) + '</b> <span class="afq-mut">· ' + esc(q.ch) + '</span> <span style="float:right;color:' + (a.p >= q.need ? '#8ef0d0' : '#ffd95a') + '">' + progText(q) + '</span><br><small class="afq-mut">' + esc(objText(q)) + (q.need > 1 ? ' x' + q.need : '') + ' · giao cho ' + esc(ST.NPCS[q.to].name) + '</small> <button class="afq-btn g" data-a="drop" data-id="' + q.id + '" style="float:right">Bỏ</button></div>'; }).join('') : '<div class="afq-row afq-mut">Chưa nhận nhiệm vụ nào. Hãy nói chuyện với người có dấu <b>!</b> trên đầu (phím E).</div>';
     } else if (Q.tab === 'story') {
@@ -158,11 +207,28 @@
     if (a === 'x') toggle(false); else if (a === 'tab') { Q.tab = b.dataset.v; renderJournal(); }
     else if (a === 'drop') { if (confirm('Bỏ nhiệm vụ này? Tiến độ sẽ mất.')) send({ t: 'zone', op: 'qabandon', id: b.dataset.id }); }
     else if (a === 'title') send({ t: 'zone', op: 'qtitle', title: b.dataset.v });
+    else if (a === 'pick') { Q.sel = b.dataset.k; renderJournal(); }
+    else if (a === 'trk' && window.AF_NAV) { window.AF_NAV.track(b.dataset.k); H.toast('Đang chỉ đường · đi theo mũi tên vàng'); renderJournal(); renderTracker(); }
   });
   function toggle(v) { Q.open = v === undefined ? !Q.open : v; jr.hidden = !Q.open; if (Q.open) { send({ t: 'zone', op: 'qinfo' }); renderJournal(); } }
   btn.addEventListener('click', () => toggle());
 
   function renderTracker() {
+    if (window.AF_NAV) {
+      const N = window.AF_NAV, E = N.entries(), cur = N.current(), on = H.isRunning() && (E.main.length + E.side.length) > 0 && !(window.AF_CLASS && window.AF_CLASS.creating);
+      track.hidden = !on; if (!on) return;
+      const line = (en) => {
+        let t, s, ok = false;
+        if (en.kind === 'main') { const q = RU.QUESTS[X.P.quest]; t = q.title; ok = X.P.qcount >= q.need; s = ok ? 'Gặp Hollis' : X.P.qcount + '/' + q.need; }
+        else if (en.kind === 'offer') { t = en.q.title; s = en.locked ? 'Cấp ' + en.q.lv : 'Gặp ' + ST.NPCS[en.q.giver].name; }
+        else { t = en.q.title; ok = en.a.p >= en.q.need; s = ok ? 'Giao ' + ST.NPCS[en.q.to].name : progText(en.q); }
+        const tr = cur && cur.key === en.key;
+        return '<div class="afqTi' + (tr ? ' tr' : '') + (ok ? ' r' : '') + '" data-k="' + esc(en.key) + '">' + (tr ? '➤ ' : '') + esc(t) + ' <span style="float:right">' + esc(s) + '</span></div>';
+      };
+      const html = (E.main.length ? '<b>Chính</b>' + E.main.slice(0, 2).map(line).join('') : '') + (E.side.filter((x) => x.kind === 'story').length ? '<b>Phụ</b>' + E.side.filter((x) => x.kind === 'story').slice(0, 3).map(line).join('') : '') + '<div class="afqHint">Bấm để chỉ đường · N mở sổ nhiệm vụ</div>';
+      if (track.dataset.h !== html) { track.dataset.h = html; track.innerHTML = html; }
+      return;
+    }
     const on = H.isRunning() && Q.st.act.length > 0 && !(window.AF_CLASS && window.AF_CLASS.creating); track.hidden = !on; if (!on) return;
     track.innerHTML = '<b>Nhiệm vụ</b>' + Q.st.act.slice(0, 4).map((a) => { const q = byId[a.id], ok = a.p >= q.need; return '<div class="' + (ok ? 'r' : '') + '">' + esc(q.title) + ' <span style="float:right">' + (ok ? 'Giao ' + esc(ST.NPCS[q.to].name) : progText(q)) + '</span></div>'; }).join('');
   }
@@ -183,6 +249,7 @@
     if (k === 'n') toggle(); else if (k === 'e' && near && !Q.dlg) send({ t: 'zone', op: 'qtalk', npc: near });
   });
   setTimeout(buildNpcs, 600);
+  setInterval(() => { if (Q.open && Q.tab === 'act' && !jr.matches(':hover')) { const k = jr.scrollTop; renderJournal(); jr.scrollTop = k; } }, 1500);
 
   /* ---------- server messages ---------- */
   Q.onNet = function (m) {

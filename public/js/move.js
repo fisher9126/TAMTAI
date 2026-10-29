@@ -20,7 +20,8 @@
     let h = ctl.head('Thú cưỡi') + '<div class="mut">Cấp 15 trở lên. Cưỡi để chạy nhanh hơn; phím <b>' + KEYS.mount.toUpperCase() + '</b> cưỡi / xuống nhanh. Tự xuống khi vào hầm ngục, tháp, raid, trận PvP hoặc xuống nước. Phím <b>' + KEYS.jump.toUpperCase() + '</b> để nhảy (chỉ là hiệu ứng).</div>';
     h += Object.keys(RU.MOUNTS).map((id) => {
       const d = RU.MOUNTS[id], own = Mv.owned[id], on = Mv.active === id;
-      return '<div class="row"><span><b style="color:#' + ('000000' + d.col.toString(16)).slice(-6) + '">' + esc(d.name) + '</b> <small class="mut">cấp ' + d.lv + ' · +' + d.spd + '% tốc độ' + (d.rep ? ' · cần ' + RU.REP_TIERS[d.rep[1]].name + ' ' + esc(RU.FACTIONS[d.rep[0]].name) : '') + '</small><br><small class="mut">' + esc(d.desc) + '</small></span><span>' +
+      const I = window.AF_ICONS, img = I && I.item ? I.item({ mount: id }) : null;
+      return '<div class="row" style="align-items:center">' + (img ? '<img src="' + img + '" alt="" style="width:96px;height:96px;object-fit:contain;flex:none;border-radius:8px;background:radial-gradient(circle,rgba(224,122,58,.25),rgba(0,0,0,0) 70%)">' : '') + '<span style="flex:1"><b style="color:#' + ('000000' + d.col.toString(16)).slice(-6) + '">' + esc(d.name) + '</b> <small class="mut">cấp ' + d.lv + ' · +' + d.spd + '% tốc độ' + (d.rep ? ' · cần ' + RU.REP_TIERS[d.rep[1]].name + ' ' + esc(RU.FACTIONS[d.rep[0]].name) : '') + '</small><br><small class="mut">' + esc(d.desc) + '</small></span><span>' +
         (own ? '<button class="' + (on ? 'on' : '') + '" data-a="ride" data-id="' + id + '">' + (on ? 'Xuống' : 'Cưỡi') + '</button>' : '<button data-a="buy" data-id="' + id + '"' + (plv() < d.lv || gold() < d.price ? ' disabled' : '') + '>Mua ' + num(d.price) + '</button>') + '</span></div>';
     }).join('');
     pn.innerHTML = h;
@@ -181,6 +182,7 @@
     g.userData = { afMountId: id, raise: o.raise, anim: o.anim, legX: o.legX, legZ: o.legZ };
     return g;
   }
+  Mv.model = (id) => mountMesh(id); /* used by icons.js for the mount pictures */
   function syncMount() {
     const root = X.PL && X.PL.root; if (!root) return;
     if (shown && (!Mv.active || shown.userData.afMountId !== Mv.active)) { root.remove(shown); shown.traverse((o) => { if (o.material && o.material.dispose) o.material.dispose(); if (o.geometry && o.geometry !== SPH && o.geometry.dispose) o.geometry.dispose(); }); shown = null; }

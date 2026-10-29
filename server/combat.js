@@ -68,6 +68,8 @@ function revive(p, pct) {
 function heal(p, n) {
   if (p.hp <= 0) return; p.hp = Math.min(stats(p).maxHp, p.hp + n); sendVit(p);
 }
+function restoreMp(p, n) { if (p.hp <= 0) return; p.mp = Math.min(stats(p).maxMp, p.mp + n); sendVit(p); }
+function mpFull(p) { return p.hp <= 0 || p.mp >= stats(p).maxMp; }
 function fullHeal(p) { const st = stats(p); p.hp = st.maxHp; p.mp = st.maxMp; sendVit(p); }
 /* keep HP/MP inside the (possibly changed) maximums */
 function clamp(p) { const st = stats(p); p.hp = Math.min(p.hp, st.maxHp); p.mp = Math.min(p.mp, st.maxMp); sendVit(p); }
@@ -269,5 +271,5 @@ function handle(p, m) {
   return undefined;
 }
 
-module.exports = { init, hurt, handle, onHit, onConnect, onLeave, isDead, respawn, heal, potionBlocked,
+module.exports = { init, hurt, handle, onHit, onConnect, onLeave, isDead, respawn, heal, potionBlocked, restoreMp, mpFull,
   revive, fullHeal, clamp, addFx, dropFx, isStunned, sendVit, maxHp };

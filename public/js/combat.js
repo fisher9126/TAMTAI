@@ -38,7 +38,7 @@
 
   /* ---------- block (right mouse button) ---------- */
   let blockLocal = 0;
-  /* the right button blocks in the classic cameras; in the diagonal (Dungeons) camera it fires skill 1, and R blocks in every camera */
+  /* the right button blocks in the classic cameras; in the diagonal (Dungeons) camera it fires skill 1, and F blocks in every camera */
   function block() {
     if (!H.isRunning() || !H.R.alive) return;
     const t = performance.now(); if (t < blockLocal) return; blockLocal = t + 1500;
@@ -49,7 +49,7 @@
   window.addEventListener('keydown', (e) => {
     const tg = e.target; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT')) return;
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.code === 'KeyR' && !(window.AF_ISO && window.AF_ISO.busy && window.AF_ISO.busy())) block();
+    if (e.code === 'KeyF' && !(window.AF_ISO && window.AF_ISO.busy && window.AF_ISO.busy())) block();
   });
 
   /* ---------- server messages ---------- */

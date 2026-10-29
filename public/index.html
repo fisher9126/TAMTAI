@@ -271,6 +271,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
       <button class="sk" id="sk2" type="button" aria-label="Lao tới"><span class="key">2</span><svg viewBox="0 0 24 24" fill="none" stroke="#62aaf0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M3 7h5M3 17h5"/></svg><span class="cd"></span><span class="cdt"></span></button>
       <button class="sk" id="skD" type="button" aria-label="Né"><span class="key">Space</span><svg viewBox="0 0 24 24" fill="none" stroke="#79d08a" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 18c2-8 8-12 14-12"/><path d="M15 3l4 3-3 4"/></svg><span class="cd"></span></button>
       <button class="sk" id="skP" type="button" aria-label="Bình máu"><span class="key">Q</span><svg viewBox="0 0 24 24" fill="none" stroke="#e0533f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3h4v5l4 6a5 5 0 0 1-4 7h-4a5 5 0 0 1-4-7l4-6z"/></svg><span class="cnt" id="potN">5</span><span class="cd"></span><span class="cdt"></span></button>
+      <button class="sk" id="skM" type="button" aria-label="Bình mana"><span class="key">R</span><svg viewBox="0 0 24 24" fill="none" stroke="#5aa8ff" stroke-width="2" aria-hidden="true"><path d="M10 3h4v5l4 6a5 5 0 0 1-4 7h-4a5 5 0 0 1-4-7l4-6z"/></svg><span class="cnt" id="mpN">0</span><span class="cd"></span><span class="cdt"></span></button>
     </div>
     <div class="rbtns pa">
       <div class="brow"><button class="bag" id="chatToggle" type="button" hidden>Chat</button><button class="bag" id="frBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6 6 0 0 1 3.5 6"/></svg>Bạn bè <span class="badge" id="frN" hidden></span></button><button class="bag" id="bagBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Túi đồ <span id="bagN" style="color:var(--muted);font-weight:500"></span></button></div>
@@ -322,13 +323,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
       <div><span>Đánh thường (giữ để đánh liên tục)</span><kbd>Chuột trái / J</kbd></div>
       <div><span>Kỹ năng 1 về phía con trỏ</span><kbd>Chuột phải</kbd></div>
       <div><span>Kỹ năng</span><kbd>1 · 2 · 3 · 4</kbd></div>
-      <div><span>Thủ thế (đỡ đòn)</span><kbd>R</kbd></div>
+      <div><span>Thủ thế (đỡ đòn)</span><kbd>F</kbd></div>
       <div><span>Né</span><kbd>Space</kbd></div>
-      <div><span>Bình máu</span><kbd>Q</kbd></div>
+      <div><span>Bình máu · Bình mana</span><kbd>Q · R</kbd></div>
       <div><span>Chat</span><kbd>Enter</kbd></div>
       <div><span>Kho đồ</span><kbd>I</kbd></div>
       <div><span>Đóng bảng, trở lại chơi</span><kbd>Esc</kbd></div>
-      <div><span>Nói chuyện với NPC</span><kbd>F</kbd></div>
+      <div><span>Nói chuyện với NPC, thu thập</span><kbd>E</kbd></div>
     </div>
     <p class="note" id="ctlTouch" hidden>Trên điện thoại: kéo cần điều khiển bên trái để đi, bấm các nút kỹ năng để đánh (tự nhắm quái gần nhất).</p>
     </details>
@@ -353,7 +354,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/js/items.js?v=10"></script>
-<script src="/js/rules.js?v=10"></script>
+<script src="/js/rules.js?v=11"></script>
 <script>
 (function(){
 'use strict';
@@ -778,8 +779,8 @@ const npcLab=document.createElement('div'); npcLab.className='lbl npc'; npcLab.i
 /* ================= LOOT ================= */
 const loots=[];
 function dropLootNet(l){
-  const g=new THREE.Group(); const isPot=l.kind==='potion';
-  const c=isPot?0xe0533f:RCOL[l.rarity]||0x9ea5b0;
+  const g=new THREE.Group(); const isPot=l.kind==='potion'||l.kind==='mpotion';
+  const c=l.kind==='mpotion'?0x3f8ae0:isPot?0xe0533f:RCOL[l.rarity]||0x9ea5b0;
   const gem=mesh(new THREE.OctahedronGeometry(isPot?0.22:0.3),new THREE.MeshStandardMaterial({color:c,emissive:new THREE.Color(c),emissiveIntensity:0.7,roughness:0.3,flatShading:true}));
   gem.position.y=0.7; g.add(gem);
   if(!isPot&&l.rarity!=='common'){
@@ -898,22 +899,22 @@ window.addEventListener('keydown',e=>{
   const k=keyOf(e); keys[k]=true; if(e.code==='Space'||e.key===' ') keys[' ']=true;
   if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)||e.code==='Space') e.preventDefault();
   if(e.repeat)return;
-  if(k==='i'||k==='b'){ toggleInv(); return; }
+  if(k==='i'){ toggleInv(); return; }
   if(k==='escape'){ if(dialogOpen)closeDialog(); else if(invOpen)closeInv(); else if(frOpen)closeFriends(); return; }
-  if(dialogOpen&&(k==='f'||k==='enter')){ closeDialog(); return; }
+  if(dialogOpen&&(k==='e'||k==='f'||k==='enter')){ closeDialog(); return; }
   if(k==='l'){ toggleMouseLock(); return; }
-  if(k==='f'){ tryTalk(); return; }
-  if(k==='j') doAttack();
+  if(k==='e'){ tryTalk(); }
   if(k==='1'&&!(window.AF_CLASS&&window.AF_CLASS.useKey(1))) doSpin();
   if(k==='3'&&window.AF_CLASS) window.AF_CLASS.useKey(3);
   if(k==='4'&&window.AF_CLASS) window.AF_CLASS.useKey(4);
   if(k==='2'&&!(window.AF_CLASS&&window.AF_CLASS.useKey(2))) doDash();
   if(k==='q') doPotion();
+  if(k==='r') doManaPotion();
   if(e.code==='Space'||k===' ') doDodge();
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; keys[keyOf(e)]=false; if(e.key==='Meta') for(const q in keys) keys[q]=false; if(e.code==='Space') keys[' ']=false; });
 window.addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
-$('skA').addEventListener('click',()=>doAttack()); $('sk1').addEventListener('click',()=>doSpin()); $('sk2').addEventListener('click',()=>doDash()); $('skD').addEventListener('click',()=>doDodge()); $('skP').addEventListener('click',()=>doPotion());
+$('skA').addEventListener('click',()=>doAttack()); $('sk1').addEventListener('click',()=>doSpin()); $('sk2').addEventListener('click',()=>doDash()); $('skD').addEventListener('click',()=>doDodge()); $('skP').addEventListener('click',()=>doPotion()); $('skM').addEventListener('click',()=>doManaPotion());
 
 const cvs=renderer.domElement; let drag=null;
 cvs.addEventListener('contextmenu',e=>e.preventDefault());
@@ -972,13 +973,15 @@ function doDodge(){ if(window.AF_COMBAT&&time<window.AF_COMBAT.stunUntil)return;
   R.facing=Math.atan2(R.dodgeDx,R.dodgeDz); }
 function doPotion(){ if(!running||!R.alive||R.potCd>0)return; if(P.potions<=0){ toast('Hết bình máu'); return; } const s=S(); if(R.hp>=s.maxHp){ toast('Máu đang đầy'); return; }
   NET.send({t:'potion'}); P.potions--; R.potCd=AF_RULES.POTION_CD; const h=Math.round(s.maxHp*0.4); R.hp=Math.min(s.maxHp,R.hp+h); popNum(R.x,heightAt(R.x,R.z)+2.5,R.z,'+'+h,'heal'); updateHudStatic(); }
+function doManaPotion(){ if(!running||!R.alive||(R.mpCd||0)>0)return; if((P.mpotions|0)<=0){ toast('Hết bình mana'); return; } const s=S(); if(R.mp>=s.maxMp){ toast('Mana đang đầy'); return; }
+  NET.send({t:'mpotion'}); P.mpotions--; R.mpCd=AF_RULES.POTION_CD; const h=Math.round(s.maxMp*0.5); R.mp=Math.min(s.maxMp,R.mp+h); popNum(R.x,heightAt(R.x,R.z)+2.5,R.z,'+'+h+' mana','info'); updateHudStatic(); }
 function tryTalk(){ if(Math.hypot(R.x-1.5,R.z-5)<3.5){ openDialog(QUESTS[P.quest].talk); } }
 $('respawnBtn').addEventListener('click',()=>{ NET.respawn=true; const s=S(); R.alive=true; R.hp=s.maxHp; R.mp=s.maxMp; R.st=s.maxSt; R.x=1; R.z=9; $('death').hidden=true;
   enemies.forEach(e=>{ if(!e.dead&&e.state!=='idle'){ e.state='return'; } }); });
 
 /* ================= HUD UPDATE ================= */
 function updateHudStatic(){
-  $('hLvl').textContent=P.level; $('hGold').textContent=P.gold+' vàng'; $('potN').textContent=P.potions; $('bagN').textContent=P.inv.length+'/'+AF_RULES.INV_SIZE;
+  $('hLvl').textContent=P.level; $('hGold').textContent=P.gold+' vàng'; $('potN').textContent=P.potions; $('mpN').textContent=P.mpotions|0; $('bagN').textContent=P.inv.length+'/'+AF_RULES.INV_SIZE;
   const need=expNeed(P.level); $('expI').style.width=(P.exp/need*100)+'%'; $('expT').textContent='Cấp '+P.level+' · EXP '+P.exp+' / '+need;
   const q=QUESTS[P.quest]; $('qT').textContent=q.title; $('qD').textContent=q.desc; $('qP').textContent=q.need?(q.type==='boss'?'Đánh bại boss ':'Đã hạ ')+P.qcount+' / '+q.need:'';
   $('npcMark').textContent=P.quest<3?'!':'';
@@ -989,8 +992,8 @@ function updateHud(){
   $('hHpI').style.width=(R.hp/s.maxHp*100)+'%'; $('hHpT').textContent=Math.ceil(R.hp)+' / '+s.maxHp;
   $('hMpI').style.width=(R.mp/s.maxMp*100)+'%'; $('hMpT').textContent=Math.floor(R.mp)+' / '+s.maxMp;
   $('hStI').style.width=(R.st/s.maxSt*100)+'%';
-  setCd($('skA'),R.atkCd,0.55,false); setCd($('sk1'),R.sk1Cd,5,true); setCd($('sk2'),R.sk2Cd,4,true); setCd($('skD'),R.dodgeCd,0.7,false); setCd($('skP'),R.potCd,8,true);
-  $('sk1').classList.toggle('dim',R.mp<15); $('sk2').classList.toggle('dim',R.mp<10); $('skP').classList.toggle('dim',P.potions<=0);
+  setCd($('skA'),R.atkCd,0.55,false); setCd($('sk1'),R.sk1Cd,5,true); setCd($('sk2'),R.sk2Cd,4,true); setCd($('skD'),R.dodgeCd,0.7,false); setCd($('skP'),R.potCd,8,true); setCd($('skM'),R.mpCd||0,8,true);
+  $('sk1').classList.toggle('dim',R.mp<15); $('sk2').classList.toggle('dim',R.mp<10); $('skP').classList.toggle('dim',P.potions<=0); $('skM').classList.toggle('dim',(P.mpotions|0)<=0);
   const t=R.target; const tg=$('tgt');
   if(t&&!t.dead&&R.targetT>0){ tg.hidden=false; $('tgtN').innerHTML=esc(t.d.name)+' <small>Lv '+t.lv+(t.d.boss?' · Boss':'')+'</small>'; $('tgtI').style.width=(t.hp/t.maxHp*100)+'%'; $('tgtT').textContent=Math.max(0,Math.ceil(t.hp))+' / '+t.maxHp; }
   else tg.hidden=true;
@@ -1000,6 +1003,7 @@ function updateHud(){
 /* ================= MINIMAP ================= */
 const mm=$('mm'), mc=mm.getContext('2d');
 function drawMinimap(){
+  if(window.AF_MAP&&window.AF_MAP.drawMini&&window.AF_MAP.drawMini(mc,mm.width,mm.height)) return;
   const W=mm.width, H=mm.height, sc=W/80; mc.clearRect(0,0,W,H);
   mc.fillStyle='#4f8a45'; mc.fillRect(0,0,W,H);
   const toM=(x,z)=>[W/2+(x-R.x)*sc,H/2+(z-R.z)*sc];
@@ -1026,7 +1030,7 @@ function collide(o,r){ for(const ob of obstacles){ const dx=o.x-ob.x, dz=o.z-ob.
   const dc=Math.hypot(o.x,o.z); if(dc>WORLD_R){ o.x*=WORLD_R/dc; o.z*=WORLD_R/dc; } }
 function updatePlayer(dt){
   const s=S();
-  R.atkCd=Math.max(0,R.atkCd-dt); R.sk1Cd=Math.max(0,R.sk1Cd-dt); R.sk2Cd=Math.max(0,R.sk2Cd-dt); R.dodgeCd=Math.max(0,R.dodgeCd-dt); R.potCd=Math.max(0,R.potCd-dt);
+  R.atkCd=Math.max(0,R.atkCd-dt); R.sk1Cd=Math.max(0,R.sk1Cd-dt); R.sk2Cd=Math.max(0,R.sk2Cd-dt); R.dodgeCd=Math.max(0,R.dodgeCd-dt); R.potCd=Math.max(0,R.potCd-dt); R.mpCd=Math.max(0,(R.mpCd||0)-dt);
   R.comboT-=dt; R.invuln-=dt; R.targetT-=dt;
   // input
   let ix=0, iy=0;
@@ -1238,6 +1242,7 @@ function onNet(m){
     case 'loot': m.list.forEach(dropLootNet); break;
     case 'picked': removeLoot(m.id);
       if(m.kind==='potion') toast('Nhặt được <span style="color:var(--hp)">Bình máu</span>');
+      else if(m.kind==='mpotion') toast('Nhặt được <span style="color:#5aa8ff">Bình mana</span>');
       else if(m.item) toast('Nhặt được <span style="color:'+RCSS[m.item.rarity]+'">'+esc(m.item.name)+'</span> · '+RNAME[m.item.rarity]);
       break;
     case 'pickfail': { const l=loots.find(x=>x.id===m.id); if(l){ l.pending=true; l.pendT=-6; } break; }
@@ -1361,14 +1366,14 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 })();
 </script>
 <script src="js/social.js?v=10"></script>
-<script src="js/combat.js?v=10"></script>
+<script src="js/combat.js?v=11"></script>
 <script src="js/classes.js?v=9"></script>
-<script src="js/zones.js?v=9"></script>
+<script src="js/zones.js?v=10"></script>
 <script src="js/story.js?v=9"></script>
 <script src="js/tree.js?v=9"></script>
 <script src="js/geardata.js?v=9"></script>
-<script src="js/explore.js?v=10"></script>
-<script src="js/quests.js?v=10"></script>
+<script src="js/explore.js?v=11"></script>
+<script src="js/quests.js?v=11"></script>
 <script src="js/skilltree.js?v=9"></script>
 <script src="js/gear.js?v=9"></script>
 <script src="js/auction.js?v=9"></script>
@@ -1378,18 +1383,23 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/equipdata.js?v=9"></script>
 <script src="js/equip.js?v=9"></script>
 <script src="js/world2.js?v=9"></script>
-<script src="js/move.js?v=10"></script>
+<script src="js/move.js?v=11"></script>
 <script src="js/instances.js?v=9"></script>
 <script src="js/faction.js?v=9"></script>
 <script src="js/pvp.js?v=9"></script>
-<script src="js/team.js?v=9"></script>
+<script src="js/team.js?v=10"></script>
 <script src="js/visual.js?v=10"></script>
 <script src="js/monsters.js?v=9"></script>
-<script src="js/armory.js?v=1"></script>
-<script src="js/iso.js?v=2"></script>
+<script src="js/mobs.js?v=1"></script>
+<script src="js/armory.js?v=2"></script>
+<script src="js/iso.js?v=3"></script>
 <script src="js/vfx.js?v=1"></script>
 <script src="js/vendor/GLTFLoader.js?v=1"></script>
 <script src="js/vendor/SkeletonUtils.js?v=1"></script>
-<script src="js/dark.js?v=3"></script>
+<script src="js/dark.js?v=4"></script>
+<script src="js/blocks.js?v=1"></script>
+<script src="js/icons.js?v=1"></script>
+<script src="js/nav.js?v=1"></script>
+<script src="js/hud.js?v=1"></script>
 </body>
 </html>

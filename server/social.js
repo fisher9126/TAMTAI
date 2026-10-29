@@ -480,7 +480,9 @@ function shopList(p) {
   const lv = shopLv(p), pp = Math.max(1, Math.round(POTION_PRICE * shopMult()));
   const list = [
     { id: 'pot1', kind: 'potion', name: 'Bình máu x1', price: pp },
-    { id: 'pot10', kind: 'potion', name: 'Bình máu x10', price: Math.max(1, pp * 10 - Math.round(30 * shopMult())) }
+    { id: 'pot10', kind: 'potion', name: 'Bình máu x10', price: Math.max(1, pp * 10 - Math.round(30 * shopMult())) },
+    { id: 'mp1', kind: 'potion', mana: true, name: 'Bình mana x1', price: pp },
+    { id: 'mp10', kind: 'potion', mana: true, name: 'Bình mana x10', price: Math.max(1, pp * 10 - Math.round(30 * shopMult())) }
   ];
   /* every weapon kind and armour style of the buyer's class (all classes before a character is made), common and rare */
   const cls = p.prof && p.prof.cls;
@@ -498,9 +500,9 @@ function shopBuy(p, m) {
   const d = p.data;
   if (d.gold < e.price) return sys(p, 'Bạn không đủ vàng.');
   if (e.kind === 'potion') {
-    const n = e.id === 'pot10' ? 10 : 1;
-    if (d.potions + n > 999) return sys(p, 'Bạn mang đủ bình máu rồi.');
-    d.gold -= e.price; d.potions += n; sys(p, 'Đã mua ' + e.name + ' với giá ' + e.price + ' vàng.');
+    const n = e.id === 'pot10' || e.id === 'mp10' ? 10 : 1, key = e.mana ? 'mpotions' : 'potions';
+    if ((d[key] | 0) + n > 999) return sys(p, 'Bạn mang đủ bình rồi.');
+    d.gold -= e.price; d[key] = (d[key] | 0) + n; sys(p, 'Đã mua ' + e.name + ' với giá ' + e.price + ' vàng.');
   } else {
     if (d.inv.length >= INV) return sys(p, 'Túi đồ đã đầy.');
     d.gold -= e.price; const it = items.makeItem(e.slot, e.rarity, e.ilvl, null, p.prof && p.prof.cls, e.type); d.inv.push(it);

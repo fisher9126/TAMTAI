@@ -453,6 +453,17 @@
     Hm.root.add(sk.wrap); skins.set(Hm, sk); play(sk, 'Idle'); sk.mixer.update(Math.random() * 2);
     return sk;
   }
+  /* for icons.js and the armory preview: build weapons and a dressed, animated hero away from the world */
+  D.api = {
+    WSPEC, WDEF, KIND, makePiece, wlib,
+    hero(cls, eq, wtype, rarity) {
+      const kind = KIND[cls] || 'knight', sk = makeSkin(kind); if (!sk) return null;
+      sk.cls = cls; dress(sk, cls, eq || {}, rarity || 'common', false, wtype); weaponGlow(sk, rarity);
+      if (cls === 'healer') sk.o.traverse((m) => { if (m.isMesh) m.material.color.setRGB(1.0, 0.97, 0.88); });
+      play(sk, sk.set === '2h' ? '2H_Melee_Idle' : 'Idle');
+      return { root: sk.wrap, update: (dt) => sk.mixer.update(dt), attack: () => { const list = ATKSET[sk.set] || ATK[cls] || ATK.warrior; play(sk, list[0], { once: true, restart: true, ts: 1.4 }); setTimeout(() => play(sk, sk.set === '2h' ? '2H_Melee_Idle' : 'Idle', { fade: 0.3 }), 900); } };
+    }
+  };
   function hideOld(Hm) { if (Hm.model && Hm.model.visible) Hm.model.visible = false; }
   const APPS = new WeakMap();
   const C = window.AF_CLASS;

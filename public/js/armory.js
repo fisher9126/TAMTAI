@@ -34,6 +34,8 @@
     ring: 'M12 9a6 6 0 1 1 0 12 6 6 0 0 1 0-12M9 3h6l-3 5z', neck: 'M5 3c0 8 14 8 14 0M12 11v3M12 14a3 3 0 1 1 0 6 3 3 0 0 1 0-6', charm: 'M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z',
     lock: 'M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z', x: 'M6 6l12 12M18 6L6 18'
   };
+  const pic = (o) => { const I = window.AF_ICONS; let u = null; try { u = I && I.forItem ? I.forItem(o.src, o.it) : null; } catch (e) { u = null; } return u; };
+  const picOr = (o, c) => { const u = o && pic(o); return u ? '<img class="pic" src="' + u + '" alt="">' : svg(o ? o.icon : 'sword', c); };
   const svg = (k, c) => '<svg viewBox="0 0 24 24" aria-hidden="true" style="stroke:' + (c || 'currentColor') + '"><path d="' + (IC[k] || IC.charm) + '"/></svg>';
 
   /* ---------- styles ---------- */
@@ -105,6 +107,36 @@
   #afArm .btn.arm{background:#a8322a;color:#fff}
   #afArm .lines{font-size:12px;margin:4px 0}
   #afArm .lines div{padding:2px 0}
+  #afArm .pic{width:86%;height:86%;object-fit:contain;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6));pointer-events:none}
+  #afArm .slot .pic{width:70%;height:70%}
+  #afArm .hero{padding:0!important;min-height:330px}
+  #afArm .pv{width:100%;flex:1;min-height:260px}
+  #afArm .pv .em{margin:90px auto 0}
+  #afArm .bigpic{position:relative;height:150px;margin:-4px 0 10px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--rc) 35%,transparent),rgba(0,0,0,0) 65%),rgba(0,0,0,.25);border:1px solid color-mix(in srgb,var(--rc) 40%,transparent)}
+  #afArm .bigpic img{height:140px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.7))}
+  #afArm .bigpic span{position:absolute;right:10px;top:8px;font:900 22px 'Cinzel',serif;color:#ffe0a0;text-shadow:0 2px 6px #000}
+  #afArm .forge{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  #afArm .fcard{all:unset;box-sizing:border-box;cursor:pointer;display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+  #afArm .fcard:hover{border-color:rgba(255,190,120,.5)}#afArm .fcard.sel{outline:2px solid #ffb066}
+  #afArm .fcard img,#afArm .fcard svg{width:44px;height:44px;object-fit:contain;flex:none}
+  #afArm .fcard b{display:block;font-size:12px;line-height:1.25}#afArm .fcard small{color:#ffe0a0;font-weight:800}
+  #afArm .fstage{position:relative;height:190px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 60%,rgba(255,140,60,.35),rgba(0,0,0,0) 60%),linear-gradient(180deg,#1a120c,#0a0705);border:1px solid rgba(224,122,58,.35);overflow:hidden}
+  #afArm .fstage img{height:150px;filter:drop-shadow(0 8px 12px rgba(0,0,0,.8));transition:transform .2s}
+  #afArm .fstage .lv{position:absolute;left:12px;top:10px;font:900 26px 'Cinzel',serif;color:#ffe0a0;text-shadow:0 2px 8px #000}
+  #afArm .fstage .res{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:900 30px 'Cinzel',serif;letter-spacing:.08em;opacity:0;pointer-events:none}
+  #afArm .fstage.ok .res{animation:afFok 1.4s ease-out;color:#ffe08a;text-shadow:0 0 20px #ff9a2a,0 2px 6px #000}
+  #afArm .fstage.ok{animation:afFglow 1.2s ease-out}
+  #afArm .fstage.bad .res{animation:afFok 1.4s ease-out;color:#ff6a5a;text-shadow:0 0 18px #a01010,0 2px 6px #000}
+  #afArm .fstage.bad img{animation:afFshake .45s}
+  #afArm .fstage.hit img{animation:afFhit .35s}
+  @keyframes afFok{0%{opacity:0;transform:scale(.6)}20%{opacity:1;transform:scale(1.15)}70%{opacity:1;transform:scale(1)}100%{opacity:0}}
+  @keyframes afFglow{0%{box-shadow:inset 0 0 0 rgba(255,200,90,0)}30%{box-shadow:inset 0 0 80px rgba(255,200,90,.9)}100%{box-shadow:inset 0 0 0 rgba(255,200,90,0)}}
+  @keyframes afFshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-4deg)}40%{transform:translateX(9px) rotate(3deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+  @keyframes afFhit{0%{transform:scale(1)}40%{transform:scale(.9) rotate(-6deg)}100%{transform:scale(1)}}
+  #afArm .chance{position:relative;height:18px;border-radius:9px;background:rgba(0,0,0,.5);overflow:hidden;margin:8px 0}
+  #afArm .chance i{display:block;height:100%;background:linear-gradient(90deg,#a8322a,#e0a040,#7ddc8f)}
+  #afArm .chance span{position:absolute;inset:0;text-align:center;font:800 11px/18px system-ui}
+  #afArm .btn.big{width:100%;padding:12px;font-size:15px;text-align:center;margin-top:6px}
   #afArm .cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
   #afArm .card{padding:10px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
   #afArm .card .t{display:flex;align-items:center;gap:8px;font-weight:700;color:#fff1dc}
@@ -192,11 +224,11 @@
     const slotBtn = (s) => {
       const o = wn[s[0]], c = o ? RCOL[o.rarity] : '#7a7066', key = o ? o.src + ':' + o.id : '';
       return '<button class="slot' + (o ? '' : ' empty') + (A.sel && A.sel === key ? ' sel' : '') + '" type="button" data-a="sel" data-k="' + key + '" style="' + (o ? 'border-color:' + c + ';box-shadow:inset 0 0 18px ' + c + '33' : '') + '" title="' + esc(o ? o.name : s[2] + ': trống') + '">' +
-        svg(o ? o.icon : s[3], c) + (o && o.enh ? '<span class="en">+' + o.enh + '</span>' : '') + '<small>' + s[2] + '</small></button>';
+        (o ? picOr(o, c) : svg(s[3], c)) + (o && o.enh ? '<span class="en">+' + o.enh + '</span>' : '') + '<small>' + s[2] + '</small></button>';
     };
     const L = EQSLOTS.slice(0, 5), Rr = EQSLOTS.slice(5, 10);
     let h = '<h4>Đang mặc</h4><div class="doll">';
-    for (let i = 0; i < 5; i++) { h += slotBtn(L[i]); if (i === 0) h += '<div class="hero"><div class="em">' + svg(wn.weapon ? wn.weapon.icon : 'sword', '#ffb066') + '</div><b>' + esc(cls ? IT.CLSNAME[cls] : 'Chưa chọn class') + '</b><small>Cấp ' + (p.level || 1) + '</small></div>'; h += slotBtn(Rr[i]); }
+    for (let i = 0; i < 5; i++) { h += slotBtn(L[i]); if (i === 0) h += '<div class="hero"><div class="pv" id="afArmPv" title="Kéo để xoay · bấm đúp để xem đòn đánh"></div><b>' + esc(cls ? IT.CLSNAME[cls] : 'Chưa chọn class') + '</b><small>Cấp ' + (p.level || 1) + '</small></div>'; h += slotBtn(Rr[i]); }
     h += '</div><div class="doll2">' + slotBtn(EQSLOTS[10]) + slotBtn(EQSLOTS[11]) + '</div>';
     let st = null; try { st = RU.playerStats(p); } catch (e) { st = null; }
     if (st) {
@@ -204,6 +236,13 @@
       h += '<div class="cnt" style="margin-top:8px">Chỉ số từ trang bị phụ, trang sức và cây kỹ năng được máy chủ cộng thêm khi chiến đấu.</div>';
     }
     $L.innerHTML = h;
+    /* the dressed hero, rebuilt only when what you wear changes */
+    const I = window.AF_ICONS, Dk = window.AF_DARK, pv = $L.querySelector('#afArmPv');
+    if (I && I.preview && pv && Dk && Dk.api && Dk.ready) {
+      const eq = p.eq || {}, w = eq.weapon, wt = w && w.type && IT.canUse(w, cls) ? w.type : null;
+      const key = [cls, wt, w && w.rarity, eq.helmet && eq.helmet.id, eq.cape && eq.cape.id].join('|');
+      I.preview(pv, key, () => Dk.api.hero(cls || 'warrior', eq, wt, w ? w.rarity : 'common'));
+    } else if (pv) pv.innerHTML = '<div class="em">' + svg(wn.weapon ? wn.weapon.icon : 'sword', '#ffb066') + '</div>';
   }
 
   /* ---------- middle column: bag grid or catalogue ---------- */
@@ -233,7 +272,7 @@
     else h += '<div class="grid">' + list.map((o) => {
       const c = RCOL[o.rarity], key = o.src + ':' + o.id, up = o.usable && gain(o, wn) > 0.5;
       return '<button class="cell' + (A.sel === key ? ' sel' : '') + '" type="button" data-a="sel" data-k="' + key + '" title="' + esc(o.name) + '" style="border-color:' + c + ';background:linear-gradient(160deg,' + c + '22,rgba(0,0,0,.3))">' +
-        svg(o.icon, c) + (o.enh ? '<span class="en">+' + o.enh + '</span>' : '') + '<span class="lv">' + o.ilvl + '</span>' + (up ? '<span class="up">▲</span>' : '') + (o.lock ? '<span class="lk">' + svg('lock', '#cdbfa6') + '</span>' : '') + (o.usable ? '' : '<span class="no"></span>') + '</button>';
+        picOr(o, c) + (o.enh ? '<span class="en">+' + o.enh + '</span>' : '') + '<span class="lv">' + o.ilvl + '</span>' + (up ? '<span class="up">▲</span>' : '') + (o.lock ? '<span class="lk">' + svg('lock', '#cdbfa6') + '</span>' : '') + (o.usable ? '' : '<span class="no"></span>') + '</button>';
     }).join('') + '</div>';
     return h;
   }
@@ -251,9 +290,37 @@
     h += '<div class="cnt" style="margin-top:8px">Mỗi món rơi ra có một loại (theo class) và một biến thể của bậc đó. Quái rơi đồ hợp class của bạn nhiều hơn; đồ class khác vẫn bán hoặc trao đổi được. Đồ cũ từ trước bản này dùng được cho mọi class.</div>';
     return h;
   }
+  /* ---------- forge (enhancement) ---------- */
+  function forgeItems() { const out = [], wn = worn(); Object.keys(wn).forEach((k) => { const o = wn[k]; if (o && o.src !== 'acc') out.push(o); }); bagItems().forEach((o) => { if (o.src !== 'acc') out.push(o); }); return out; }
+  function renderForge() {
+    const list = forgeItems();
+    if (!A.fsel && list.length) A.fsel = list[0].src + ':' + list[0].id;
+    return '<div class="cnt">Chọn món để cường hóa (tối đa +' + IT.MAX_ENH + '). Món đang mặc nằm đầu danh sách. Mỗi cấp tăng khoảng 12% chỉ số gốc.</div><div class="forge">' + list.map((o) => {
+      const key = o.src + ':' + o.id, u = pic(o);
+      return '<button class="fcard' + (A.fsel === key ? ' sel' : '') + '" type="button" data-a="fsel" data-k="' + key + '" style="border-left:3px solid ' + RCOL[o.rarity] + '">' + (u ? '<img src="' + u + '" alt="">' : svg(o.icon, RCOL[o.rarity])) + '<span><b style="color:' + RCOL[o.rarity] + '">' + esc(o.name.replace(/\s*\+\d+$/, '')) + '</b><small>+' + o.enh + '</small>' + (o.worn ? ' <span style="color:#7ddc8f;font-size:10.5px">đang mặc</span>' : '') + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function forgeView() {
+    const o = find(A.fsel), p = P();
+    if (!o) return '<h4>Lò rèn</h4><div class="empty-note">Chọn một món ở giữa để cường hóa.</div>';
+    const main = o.src === 'main', e = o.enh, maxE = main ? IT.MAX_ENH : E.MAX_ENH, max = e >= maxE;
+    const cost = main ? IT.enhCost(o.it) : E.enhCost(o.it), ch = main ? IT.enhChance(e) : E.enhChance(e);
+    const next = max ? null : main ? IT.statsFor(o.it.slot, o.rarity, o.ilvl, e + 1, o.it.type, o.it.v) : E.stats(Object.assign({}, o.it, { enh: e + 1 }));
+    const wards = (window.AF_ZONES && window.AF_ZONES.mats && window.AF_ZONES.mats.ward) | 0, res = A.forgeRes && performance.now() - A.forgeRes.t < 1500 ? A.forgeRes : null;
+    const u = pic(o);
+    let h = '<h4>Lò rèn</h4><div class="fstage' + (res ? (res.ok ? ' ok' : ' bad') : A.forgeHit ? ' hit' : '') + '">' + (u ? '<img src="' + u + '" alt="">' : '') + '<span class="lv">+' + e + '</span><span class="res">' + (res ? (res.ok ? 'THÀNH CÔNG' : res.warded ? 'BÙA ĐÃ GIỮ CẤP' : res.lost ? 'THẤT BẠI · TỤT CẤP' : 'THẤT BẠI') : '') + '</span></div>';
+    h += '<h3 style="color:' + RCOL[o.rarity] + ';margin-top:10px">' + esc(o.name) + '</h3>';
+    if (max) return h + '<div class="cnt">Đã đạt cấp tối đa +' + maxE + '.</div>';
+    h += '<div class="sub">+' + e + ' → <b style="color:#ffe0a0">+' + (e + 1) + '</b></div><table>' + Object.keys(STAT).filter((k) => (o.stats[k] || next[k])).map((k) => { const a1 = o.stats[k] || 0, b1 = next[k] || 0, d = Math.round((b1 - a1) * 10) / 10; return '<tr><td>' + STAT[k] + '</td><td>' + fmtv(k, a1) + ' → ' + fmtv(k, b1) + '</td><td>' + (d > 0 ? '<span class="upc">▲ ' + fmtv(k, d).replace('+', '') + '</span>' : '') + '</td></tr>'; }).join('') + '</table>';
+    h += '<div class="chance"><i style="width:' + Math.round(ch * 100) + '%"></i><span>Tỉ lệ thành công ' + Math.round(ch * 100) + '%</span></div>';
+    h += '<div class="cnt">Chi phí <b style="color:#f0bf4c">' + num(cost) + ' vàng</b> · bạn có ' + num(p.gold) + ' vàng</div>';
+    if (e >= 5) h += '<div class="warn">Thất bại từ +5 sẽ tụt 1 cấp.' + (e >= 7 ? ' Bùa bảo hộ (đang có ' + wards + ') tự dùng để giữ cấp.' : '') + '</div>';
+    h += actBtn('fdo', 'Cường hóa lên +' + (e + 1), 'p big', p.gold < cost);
+    return h;
+  }
   function renderMid() {
-    $M.innerHTML = '<div class="tabs"><button class="chip' + (A.tab === 'bag' ? ' on' : '') + '" type="button" data-a="tab" data-v="bag">Túi đồ</button><button class="chip' + (A.tab === 'cat' ? ' on' : '') + '" type="button" data-a="tab" data-v="cat">Sách trang bị</button></div>' +
-      (A.tab === 'cat' ? renderCatalog() : renderBag());
+    $M.innerHTML = '<div class="tabs"><button class="chip' + (A.tab === 'bag' ? ' on' : '') + '" type="button" data-a="tab" data-v="bag">Túi đồ</button><button class="chip' + (A.tab === 'forge' ? ' on' : '') + '" type="button" data-a="tab" data-v="forge">Cường hóa</button><button class="chip' + (A.tab === 'cat' ? ' on' : '') + '" type="button" data-a="tab" data-v="cat">Sách trang bị</button></div>' +
+      (A.tab === 'cat' ? renderCatalog() : A.tab === 'forge' ? renderForge() : renderBag());
   }
 
   /* ---------- right column: details and actions ---------- */
@@ -270,9 +337,11 @@
   function renderRight() {
     const o = find(A.sel), p = P();
     $gold.textContent = num(p.gold) + ' vàng';
+    if (A.tab === 'forge') { $R.innerHTML = forgeView(); return; }
     if (!o) { $R.innerHTML = '<h4>Chi tiết</h4><div class="empty-note">Chọn một món trong túi hoặc trên người để xem chỉ số, so sánh và các thao tác.<br><br>▲ xanh: mạnh hơn món bạn đang mặc.<br>Sọc đỏ: món của class khác.</div>'; return; }
     const wn = worn(), other = o.worn ? null : rival(o, wn), c = RCOL[o.rarity];
-    let h = '<h3 style="color:' + c + '">' + esc(o.name) + '</h3><div class="sub">' + IT.RNAME[o.rarity] + ' · ' + esc(o.kind || o.slotName) + ' · cấp đồ ' + o.ilvl + (o.cls ? ' · <span style="color:' + (o.usable ? '#cdbfa6' : '#ff8f80') + '">' + IT.CLSNAME[o.cls] + '</span>' : ' · mọi class') + (o.worn ? ' · <b style="color:#7ddc8f">đang mặc</b>' : '') + '</div>';
+    const big = pic(o);
+    let h = (big ? '<div class="bigpic" style="--rc:' + c + '"><img src="' + big + '" alt="">' + (o.enh ? '<span>+' + o.enh + '</span>' : '') + '</div>' : '') + '<h3 style="color:' + c + '">' + esc(o.name) + '</h3><div class="sub">' + IT.RNAME[o.rarity] + ' · ' + esc(o.kind || o.slotName) + ' · cấp đồ ' + o.ilvl + (o.cls ? ' · <span style="color:' + (o.usable ? '#cdbfa6' : '#ff8f80') + '">' + IT.CLSNAME[o.cls] + '</span>' : ' · mọi class') + (o.worn ? ' · <b style="color:#7ddc8f">đang mặc</b>' : '') + '</div>';
     if (o.desc) h += '<div class="perk">' + esc(o.desc) + '</div>';
     h += statTable(o, other);
     if (other) h += '<div class="cnt">So với ' + esc(other.name) + '</div>';
@@ -336,6 +405,8 @@
     if (a === 'tab') { A.tab = b.dataset.v; render(); return; }
     if (a === 'cat') { A.cat = b.dataset.v; render(); return; }
     if (a === 'mine' || a === 'sort') return;
+    if (a === 'fsel') { A.fsel = b.dataset.k; A.forgeRes = null; render(); return; }
+    if (a === 'fdo') { const o = find(A.fsel); if (!o) return; if (o.src === 'main') net({ t: 'enhance', id: o.id }); else { zone({ op: 'eenh', id: o.id }); setTimeout(() => zone({ op: 'einfo' }), 350); } A.forgeHit = true; A.forgeRes = null; render(); setTimeout(() => { A.forgeHit = false; }, 400); return; }
     act(a);
   });
   root.addEventListener('change', (e) => {
@@ -363,8 +434,9 @@
     const f0 = mod.onNet;
     mod.onNet = function (m) {
       const r = f0.apply(this, arguments);
-      if (k === 'AF_SOCIAL' && m && m.t === 'enh' && A.open) H.toast(m.ok ? 'Cường hóa thành công: <b>' + esc(m.name) + '</b>' : 'Cường hóa thất bại' + (m.lost ? ', tụt xuống +' + m.enh : '') + '.', !!m.ok);
-      if (A.open && m && /^(einfo|ginfo|enh|me)$/.test(m.t)) setTimeout(render, 0);
+      if (A.open && m && (m.t === 'enh' && k === 'AF_SOCIAL' || m.t === 'eenh' && k === 'AF_EQUIP')) { A.forgeRes = { ok: !!m.ok, lost: !!m.lost, warded: !!m.warded, t: performance.now() }; setTimeout(render, 0); setTimeout(render, 1600); }
+      if (k === 'AF_SOCIAL' && m && m.t === 'enh' && A.open && A.tab !== 'forge') H.toast(m.ok ? 'Cường hóa thành công: <b>' + esc(m.name) + '</b>' : 'Cường hóa thất bại' + (m.lost ? ', tụt xuống +' + m.enh : '') + '.', !!m.ok);
+      if (A.open && m && /^(einfo|ginfo|enh|eenh|me)$/.test(m.t)) setTimeout(render, 0);
       return r;
     };
   });

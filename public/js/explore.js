@@ -134,11 +134,12 @@
   function drawMap() {
     if (!E.open) return;
     ctx.clearRect(0, 0, SZ, SZ);
-    const g = ctx.createRadialGradient(SZ / 2, SZ / 2, 40, SZ / 2, SZ / 2, SZ / 2); g.addColorStop(0, '#24402e'); g.addColorStop(1, '#122019'); ctx.fillStyle = g; ctx.fillRect(0, 0, SZ, SZ);
-    RU.ZONES.forEach((z) => { const [x, y] = toPx(z.x, z.z), r = z.r / (RADIUS * 2) * SZ; ctx.fillStyle = z.col + '66'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = '#ffffffcc'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(z.name, x, y - r - 4); });
-    [[W.VILLAGE, 'Làng', '#f0bf4c'], [W.FOREST, 'Rừng Bóng Đèn', '#7ddc8f'], [W.ARENA, 'Đấu trường', '#ff8a78']].forEach((a) => { const [x, y] = toPx(a[0].x, a[0].z); ctx.fillStyle = a[2] + '55'; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill(); ctx.fillStyle = '#ffffffcc'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(a[1], x, y - 30); });
+    const big = window.AF_MAP && window.AF_MAP.drawBig && window.AF_MAP.drawBig(ctx, SZ, toPx);
+    if (!big) { const g = ctx.createRadialGradient(SZ / 2, SZ / 2, 40, SZ / 2, SZ / 2, SZ / 2); g.addColorStop(0, '#24402e'); g.addColorStop(1, '#122019'); ctx.fillStyle = g; ctx.fillRect(0, 0, SZ, SZ); }
+    if (!big) RU.ZONES.forEach((z) => { const [x, y] = toPx(z.x, z.z), r = z.r / (RADIUS * 2) * SZ; ctx.fillStyle = z.col + '66'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = '#ffffffcc'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(z.name, x, y - r - 4); });
+    if (!big) [[W.VILLAGE, 'Làng', '#f0bf4c'], [W.FOREST, 'Rừng Bóng Đèn', '#7ddc8f'], [W.ARENA, 'Đấu trường', '#ff8a78']].forEach((a) => { const [x, y] = toPx(a[0].x, a[0].z); ctx.fillStyle = a[2] + '55'; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill(); ctx.fillStyle = '#ffffffcc'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(a[1], x, y - 30); });
     // fog: unexplored cells are dark
-    const cs = SZ / 27; ctx.fillStyle = 'rgba(6,9,16,.93)';
+    const cs = SZ / 27; ctx.fillStyle = big ? 'rgba(10,12,18,.78)' : 'rgba(6,9,16,.93)';
     for (let z = 0; z < 27; z++) for (let x = 0; x < 27; x++) if (!(E.fog[z] & (1 << x))) ctx.fillRect(x * cs - 0.5, z * cs - 0.5, cs + 1, cs + 1);
     E.wps.forEach((w) => { const [x, y] = toPx(w.x, w.z), ok = E.wp.includes(w.id); ctx.fillStyle = ok ? '#6fc1ff' : '#4a5570'; ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 7, y); ctx.closePath(); ctx.fill(); if (ok) { ctx.fillStyle = '#e6f3ff'; ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(w.name, x, y + 22); } });
     E.looks.forEach((l) => { const [x, y] = toPx(l.x, l.z); ctx.fillStyle = E.lk.includes(l.id) ? '#ffd95a' : '#6a6240'; ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fill(); });

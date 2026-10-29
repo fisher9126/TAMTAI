@@ -55,28 +55,30 @@
     bless: { name: 'Ban phước', desc: 'Bạn và đồng đội trong 14m tăng 15% sức đánh trong 12 giây', support: { mp: 25, cd: 30 } },
     revive: { name: 'Hồi sinh', desc: 'Hồi sinh một đồng đội đã ngã trong 12m với 40% máu', support: { mp: 40, cd: 40 } }
   };
+  /* balance pass (armory update): melee basics hit harder than ranged ones (ranged trade damage for safety), area and ultimate skills
+     were raised so they are worth their mana, backstab was lowered a little. */
   /* reach beyond the monster radius, damage multiplier per combo step, cooldown (s), mana, cone (cos; -2 = all around), optional enemy stun/slow (ms) */
   const ATTACKS = {
-    atk: { reach: 2.9, mult: [1, 1.1, 1.6], cd: 0.3, cos: 0.35 },
-    stab: { reach: 2.4, mult: [0.85, 0.95, 1.5], cd: 0.3, cos: 0.3 },
-    bolt: { reach: 14, mult: [1, 1.1, 1.5], cd: 0.35, cos: 0.92 },
-    arrow: { reach: 16, mult: [1, 1.05, 1.5], cd: 0.35, cos: 0.94 },
-    smite: { reach: 10, mult: [0.8, 0.9, 1.2], cd: 0.35, cos: 0.9 },
+    atk: { reach: 2.9, mult: [1.1, 1.2, 1.8], cd: 0.3, cos: 0.35 },
+    stab: { reach: 2.4, mult: [1.0, 1.1, 1.7], cd: 0.3, cos: 0.3 },
+    bolt: { reach: 14, mult: [0.9, 1.0, 1.35], cd: 0.35, cos: 0.92 },
+    arrow: { reach: 16, mult: [0.9, 1.0, 1.35], cd: 0.35, cos: 0.94 },
+    smite: { reach: 10, mult: [0.95, 1.05, 1.4], cd: 0.35, cos: 0.9 },
     spin: { reach: 3.4, mult: [1.9], cd: 4.6, mp: 15 },
-    dash: { reach: 7.5, mult: [1.5], cd: 3.6, mp: 10 },
-    quake: { reach: 4.5, mult: [1.4], cd: 9, mp: 20, cos: -2, stun: 1500 },
+    dash: { reach: 7.5, mult: [1.7], cd: 3.6, mp: 10 },
+    quake: { reach: 4.5, mult: [1.8], cd: 9, mp: 20, cos: -2, stun: 1500 },
     fireball: { reach: 15, mult: [2.2], cd: 3, mp: 12, cos: 0.93 },
-    frost: { reach: 10, mult: [1.3], cd: 7, mp: 18, cos: 0.5, slow: 4000 },
-    thunder: { reach: 8, mult: [1.5], cd: 10, mp: 24, cos: -2, stun: 800 },
-    meteor: { reach: 12, mult: [3.2], cd: 25, mp: 45, cos: -2 },
-    pierce: { reach: 18, mult: [2.4], cd: 4, mp: 12, cos: 0.97 },
-    volley: { reach: 8, mult: [1.5], cd: 8, mp: 20, cos: -2 },
-    stunshot: { reach: 14, mult: [1.2], cd: 10, mp: 15, cos: 0.9, stun: 1500 },
-    barrage: { reach: 16, mult: [3.0], cd: 22, mp: 40, cos: 0.6 },
-    backstab: { reach: 2.8, mult: [3.0], cd: 6, mp: 15, cos: 0.3 },
+    frost: { reach: 10, mult: [1.6], cd: 7, mp: 18, cos: 0.5, slow: 4000 },
+    thunder: { reach: 8, mult: [1.9], cd: 10, mp: 24, cos: -2, stun: 800 },
+    meteor: { reach: 12, mult: [4.2], cd: 25, mp: 45, cos: -2 },
+    pierce: { reach: 18, mult: [2.2], cd: 4, mp: 12, cos: 0.97 },
+    volley: { reach: 8, mult: [1.8], cd: 8, mp: 20, cos: -2 },
+    stunshot: { reach: 14, mult: [1.4], cd: 10, mp: 15, cos: 0.9, stun: 1500 },
+    barrage: { reach: 16, mult: [3.8], cd: 22, mp: 40, cos: 0.6 },
+    backstab: { reach: 2.8, mult: [2.6], cd: 6, mp: 15, cos: 0.3 },
     flurry: { reach: 3.2, mult: [2.0], cd: 8, mp: 18, cos: -2 },
     execute: { reach: 3.0, mult: [4.5], cd: 20, mp: 35, cos: 0.3 },
-    holy: { reach: 12, mult: [1.8], cd: 5, mp: 14, cos: 0.9 }
+    holy: { reach: 12, mult: [2.2], cd: 5, mp: 14, cos: 0.9 }
   };
 
   /* ---------- classes (key 1-4 use the skills in order; each unlocks at its level) ---------- */
@@ -89,7 +91,7 @@
       basic: 'arrow', autoRange: 16, color: '#79d08a', skills: [{ id: 'pierce', lv: 1 }, { id: 'volley', lv: 5 }, { id: 'stunshot', lv: 12 }, { id: 'barrage', lv: 20 }] },
     assassin: { name: 'Sát thủ', role: 'Sát thương đơn mục tiêu, ẩn thân', desc: 'Rất nhanh, chí mạng cao, sát thương bùng nổ gần.', mul: { hp: 0.9, atk: 1.2, def: 0.9 }, add: { crit: 10, spd: 8 },
       basic: 'stab', autoRange: 4.5, color: '#b48cff', skills: [{ id: 'backstab', lv: 1 }, { id: 'vanish', lv: 5 }, { id: 'flurry', lv: 12 }, { id: 'execute', lv: 20 }] },
-    healer: { name: 'Hồi máu', role: 'Hỗ trợ, hồi phục', desc: 'Chữa lành, ban phước, hồi sinh đồng đội. Tấn công yếu.', mul: { atk: 0.8, mp: 1.5 }, add: {},
+    healer: { name: 'Hồi máu', role: 'Hỗ trợ, hồi phục', desc: 'Chữa lành, ban phước, hồi sinh đồng đội. Tấn công yếu.', mul: { atk: 0.85, mp: 1.5 }, add: {},
       basic: 'smite', autoRange: 10, color: '#ffe27a', skills: [{ id: 'heal', lv: 1 }, { id: 'holy', lv: 5 }, { id: 'bless', lv: 12 }, { id: 'revive', lv: 20 }] }
   };
   /* advanced classes: unlock at ADV_LEVEL, pick one branch; stat bonuses only (no new skills yet) */

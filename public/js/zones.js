@@ -137,6 +137,7 @@
 
   /* ---------- gathering nodes ---------- */
   const nodes = new Map(); // id -> { id, type, x, z, on, g }
+  Z.nodes = nodes; /* read by nav.js to point at gathering spots */
   const NCOL = { herb: 0x58c46a, shroom: 0x9be15d, frost: 0x9fd3ff, ore: 0xc48a52, coal: 0x6a6a78 };
   function nodeMesh(type) {
     const g = new THREE.Group(), col = NCOL[type];

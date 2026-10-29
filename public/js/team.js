@@ -8,7 +8,7 @@
   const esc = D.esc, send = D.send, num = D.num;
   const T = { frame: [], bank: null, tab: 'voice', vc: { room: null, peers: new Map(), mic: false, muted: false, err: '' } };
   window.AF_TEAM = T;
-  const ctl = D.add({ id: 'team', label: 'Đội & Bang', key: 'q', onOpen: () => send({ op: 'gbinfo' }) });
+  const ctl = D.add({ id: 'team', label: 'Đội & Bang', onOpen: () => send({ op: 'gbinfo' }) });
   const pn = ctl.panel;
   const rc = (r) => ({ common: '#c8c8d0', rare: '#6fb4ff', epic: '#c58cff', legend: '#ffa94a' }[r] || '#fff');
   const RANK = ['Thành viên', 'Phó bang', 'Trưởng bang'];

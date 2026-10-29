@@ -33,7 +33,7 @@ function cleanText(t) { return String(t || '').replace(/[\u0000-\u001f\u007f<>]/
 
 /* ---------- saves ---------- */
 function freshData() {
-  return { level: 1, exp: 0, gold: 0, potions: 5, inv: [], eq: { weapon: items.makeItem('weapon', 'common', 1, 'Kiếm Gỗ Sồi'), helmet: null, armor: null, boots: null, cape: null }, quest: 0, qcount: 0, seenIntro: false };
+  return { level: 1, exp: 0, gold: 0, potions: 5, mpotions: 3, inv: [], eq: { weapon: items.makeItem('weapon', 'common', 1, 'Kiếm Gỗ Sồi'), helmet: null, armor: null, boots: null, cape: null }, quest: 0, qcount: 0, seenIntro: false };
 }
 function sanitizeSave(d, prev, allowGold) {
   if (!d || typeof d !== 'object') return null;
@@ -45,6 +45,7 @@ function sanitizeSave(d, prev, allowGold) {
   out.gold = int(d.gold, 0, 1e9, 0);
   if (prev && out.gold > prev.gold + 50000 + (allowGold || 0)) warn.push('vàng ' + prev.gold + '→' + out.gold);
   out.potions = int(d.potions, 0, 999, 0);
+  out.mpotions = int(d.mpotions == null ? 3 : d.mpotions, 0, 999, 0); /* mana potions (added later; old saves start with 3) */
   out.inv = (Array.isArray(d.inv) ? d.inv : []).slice(0, rules.INV_SIZE).map(items.validItem).filter(Boolean);
   out.eq = {};
   items.SLOTS.forEach((s) => { const it = d.eq && d.eq[s] ? items.validItem(d.eq[s]) : null; out.eq[s] = it && it.slot === s ? it : null; });
@@ -155,10 +156,11 @@ function giveLoot(p, e) {
   if (e.d.boss) {
     add('item', items.makeItem(slot(), 'legend', e.lv, null, clsOf(p)));
     add('item', items.makeItem(slot(), Math.random() < 0.5 ? 'epic' : 'legend', e.lv, null, clsOf(p)));
-    add('potion');
+    add('potion'); add('mpotion');
   } else {
     if (Math.random() < Math.min(1, e.d.drop * events.dropMult())) add('item', items.makeItem(slot(), items.rollRarity(e.d.bonus || 0), e.lv, null, clsOf(p)));
     if (Math.random() < 0.16) add('potion');
+    if (Math.random() < 0.12) add('mpotion');
   }
   if (list.length) send(p, { t: 'loot', list });
 }
@@ -181,7 +183,7 @@ function onPick(p, m) {
   const d = p.data;
   if (l.kind === 'item' && d.inv.length >= rules.INV_SIZE) { send(p, { t: 'pickfail', id: l.id }); return sys(p, 'Túi đồ đã đầy. Bán bớt đồ trong túi (phím I) để nhặt thêm.'); }
   p.loots.delete(l.id);
-  if (l.kind === 'potion') d.potions = Math.min(999, d.potions + 1); else d.inv.push(l.item);
+  if (l.kind === 'potion') d.potions = Math.min(999, d.potions + 1); else if (l.kind === 'mpotion') d.mpotions = Math.min(999, (d.mpotions | 0) + 1); else d.inv.push(l.item);
   send(p, { t: 'picked', id: l.id, kind: l.kind, item: l.item || null });
   pushMe(p);
 }
@@ -207,6 +209,12 @@ function onPotion(p) {
   const d = p.data; const t = now();
   if (d.potions <= 0 || (p.potCd || 0) > t + 150 || combat.potionBlocked(p)) return send(p, { t: 'potion', ok: false });
   p.potCd = t + rules.POTION_CD * 1000; d.potions--; send(p, { t: 'potion', ok: true }); pushMe(p); combat.heal(p, Math.round(rules.playerStats(d).maxHp * 0.4));
+}
+
+function onManaPotion(p) {
+  const d = p.data; const t = now();
+  if ((d.mpotions | 0) <= 0 || (p.mpCd || 0) > t + 150 || combat.mpFull(p)) return send(p, { t: 'mpotion', ok: false });
+  p.mpCd = t + rules.POTION_CD * 1000; d.mpotions--; send(p, { t: 'mpotion', ok: true }); pushMe(p); combat.restoreMp(p, Math.round(rules.playerStats(d).maxMp * 0.5));
 }
 
 /* ---------- mail / gifts (delivered straight into the save when there is room) ---------- */
@@ -299,6 +307,7 @@ function onMessage(p, raw) {
     case 'unequip': return onUnequip(p, m);
     case 'sell': return onSell(p, m);
     case 'potion': return onPotion(p);
+    case 'mpotion': return onManaPotion(p);
     case 'intro': if (!p.data.seenIntro) { p.data.seenIntro = true; p.saveDirty = true; } return;
     case 'chat': return onChat(p, m);
     case 'friend': return onFriend(p, m);
