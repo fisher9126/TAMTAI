@@ -423,9 +423,8 @@
       sk.set = arm(sk, WSPEC[wtype] ? wtype : WDEF[role], shieldRarity || 'common');
       Object.keys(sk.meshes).forEach((n) => {
         const m = sk.meshes[n], base = n.replace(/_\d+$/, '');
-        if (/Helmet/.test(base)) m.visible = !!(forceHelm || (eq && eq.helmet));
-        else if (/Cape/.test(base)) m.visible = !!(forceHelm || (eq && eq.cape));
-        else if (ALWAYS.includes(base)) m.visible = true;
+        if (/Helmet/.test(base)) m.visible = !!forceHelm;
+        else if (/Cape/.test(base)) m.visible = !!forceHelm;
       });
       return;
     }
@@ -453,13 +452,103 @@
     Hm.root.add(sk.wrap); skins.set(Hm, sk); play(sk, 'Idle'); sk.mixer.update(Math.random() * 2);
     return sk;
   }
+  /* ---------- looks and worn gear on the KayKit heroes ----------
+     look: { race, gender, skin, hair, hs, shirt } (colours as numbers) · gear: { helmet, armor, cape, boots, gloves, pants } each { type, rarity }.
+     Skin and hair are painted into a copy of the hero's colour atlas (the top-left cell is skin, the next one hair);
+     hair styles, race features (elf ears, dwarf beard, orc tusks) and the gear pieces hang on the rig's bones. */
+  const STYLE_COL = { plate: 0xb8c2cc, mail: 0x8f98a2, arcane: 0x4a4ab0, starweave: 0x2e5a9a, leather: 0x8a5630, hunter: 0x557a30, shadow: 0x2e2638, nightsilk: 0x4a2266, holy: 0xf0e6cc, cleric: 0xc8c0b0 };
+  const CLASS_STYLE = { warrior: 'plate', mage: 'arcane', archer: 'leather', assassin: 'shadow', healer: 'holy' };
+  const METAL = { plate: 1, mail: 1, cleric: 1, holy: 0.4 };
+  const HELM_MESH = { plate: 'Knight_Helmet', mail: 'Knight_Helmet', holy: 'Knight_Helmet', cleric: 'Knight_Helmet', arcane: 'Mage_Hat', starweave: 'Mage_Hat', leather: 'Barbarian_Hat', hunter: 'Barbarian_Hat', shadow: 'Mage_Hat', nightsilk: 'Mage_Hat' };
+  const CAPE_MESH = { plate: 'Knight_Cape', mail: 'Knight_Cape', holy: 'Knight_Cape', cleric: 'Knight_Cape', arcane: 'Mage_Cape', starweave: 'Mage_Cape', leather: 'Barbarian_Cape', hunter: 'Barbarian_Cape', shadow: 'Rogue_Cape', nightsilk: 'Rogue_Cape' };
+  const RGLOW = { common: 0, rare: 0x1a3a6a, epic: 0x3a1a6a, legend: 0x6a3a08 };
+  const texCache = new Map();
+  function atlas(src, skin, hair, bald) {
+    const key = src.uuid + '|' + skin + '|' + hair + '|' + (bald ? 1 : 0); if (texCache.has(key)) return texCache.get(key);
+    const img = src.image; if (!img || !img.width) return src;
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    const cell = img.width / 8;
+    const paint = (cx, cy, hex) => { const col = new T.Color(hex), top = col.clone().lerp(new T.Color(0xffffff), 0.18), bot = col.clone().multiplyScalar(0.62), gr = g.createLinearGradient(0, cy * cell, 0, (cy + 1) * cell); gr.addColorStop(0, '#' + top.getHexString()); gr.addColorStop(1, '#' + bot.getHexString()); g.fillStyle = gr; g.fillRect(cx * cell, cy * cell, cell, cell); };
+    if (skin != null) paint(0, 0, skin);
+    if (hair != null || bald) paint(1, 0, bald ? skin : hair);
+    const t = new T.CanvasTexture(c); t.flipY = src.flipY; t.encoding = src.encoding; t.wrapS = src.wrapS; t.wrapT = src.wrapT; t.magFilter = src.magFilter; t.minFilter = src.minFilter;
+    texCache.set(key, t); return t;
+  }
+  function boneOf(sk, name) {
+    sk.bones = sk.bones || {}; if (sk.bones[name] !== undefined) return sk.bones[name];
+    const re = new RegExp('^' + name.replace('.', '\\.?') + '$', 'i'); let b = null; sk.o.traverse((o) => { if (!b && re.test(o.name)) b = o; }); sk.bones[name] = b; return b;
+  }
+  const lmat = (c, metal, rar) => new T.MeshStandardMaterial({ color: new T.Color(c).convertSRGBToLinear(), roughness: metal ? 0.35 : 0.8, metalness: metal ? 0.75 : 0.05, emissive: RGLOW[rar] || 0, emissiveIntensity: rar === 'legend' ? 0.6 : 0.35 });
+  function stick(sk, boneName, mesh) { const b = boneOf(sk, boneName); if (!b) return null; b.add(mesh); mesh.castShadow = true; sk.fit.push(mesh); return mesh; }
+  function boxAt(sk, bone, w, h, d, m, x, y, z) { const o = new T.Mesh(new T.BoxGeometry(w, h, d), m); o.position.set(x, y, z); return stick(sk, bone, o); }
+  function kayPiece(sk, name, bone, tint, metal, rar) {
+    const src = wlib(name); if (!src) return null; const m = src.clone(true); m.visible = true;
+    m.material = m.material.clone(); if (tint != null) m.material.color.lerp(new T.Color(tint), metal ? 0.35 : 0.6); if (RGLOW[rar]) { m.material.emissive = new T.Color(RGLOW[rar]); m.material.emissiveIntensity = 0.4; }
+    return stick(sk, bone, m);
+  }
+  function outfit(sk, look, gear, cls) {
+    look = look || {}; gear = gear || {};
+    const key = JSON.stringify([look, gear]); if (sk.fitKey === key) return; sk.fitKey = key;
+    (sk.fit || []).forEach((m) => { if (m.parent) m.parent.remove(m); }); sk.fit = [];
+    /* body colours: atlas copy for skin / hair, then tints for shirt, armour and pants */
+    const bald = look.hs === 3;
+    sk.o.traverse((m) => {
+      if (!m.isMesh || !m.material || !m.material.map) return;
+      if (!m.userData.baseMap) { m.userData.baseMap = m.material.map; m.userData.baseCol = m.material.color.getHex(); }
+      m.material.map = look.skin != null || look.hair != null ? atlas(m.userData.baseMap, look.skin, look.hair, bald) : m.userData.baseMap;
+      m.material.color.setHex(m.userData.baseCol); m.material.needsUpdate = true;
+    });
+    const tintMesh = (re, hex, k) => Object.keys(sk.meshes).forEach((n) => { if (re.test(n) && sk.meshes[n].material && sk.meshes[n].material.color) sk.meshes[n].material.color.lerp(new T.Color(hex), k); });
+    if (look.shirt != null && !gear.armor) tintMesh(/_Body$/, look.shirt, 0.35);
+    const st = (g) => (g && STYLE_COL[g.type] ? g.type : CLASS_STYLE[cls] || 'plate');
+    if (gear.armor) { const s = st(gear.armor); tintMesh(/_Body$|_Arm(Left|Right)$/, STYLE_COL[s], METAL[s] ? 0.45 : 0.55);
+      if (METAL[s]) ['upperarm.l', 'upperarm.r'].forEach((b, i) => { const p = new T.Mesh(new T.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), lmat(STYLE_COL[s], 1, gear.armor.rarity)); p.scale.set(1, 0.8, 1.05); p.position.set(0, 0.02, 0); p.rotation.z = i ? 0.5 : -0.5; stick(sk, b, p); }); }
+    if (gear.pants) tintMesh(/_Leg(Left|Right)$/, STYLE_COL[st(gear.pants)], 0.5);
+    if (gear.boots) { const s = st(gear.boots), m = lmat(STYLE_COL[s], METAL[s], gear.boots.rarity); ['foot.l', 'foot.r'].forEach((b) => boxAt(sk, b, 0.36, 0.3, 0.4, m, 0, 0.02, 0.06)); ['lowerleg.l', 'lowerleg.r'].forEach((b) => boxAt(sk, b, 0.34, 0.26, 0.34, m, 0, 0.12, 0)); }
+    if (gear.gloves) { const s = st(gear.gloves), m = lmat(STYLE_COL[s], METAL[s], gear.gloves.rarity); ['hand.l', 'hand.r'].forEach((b) => boxAt(sk, b, 0.3, 0.26, 0.3, m, 0, 0.06, 0)); ['lowerarm.l', 'lowerarm.r'].forEach((b) => boxAt(sk, b, 0.3, 0.2, 0.3, m, 0, 0.18, 0)); }
+    /* helmet replaces the hero's own hat; cape on the chest bone */
+    const nativeHats = Object.keys(sk.meshes).filter((n) => /_Hat$|Helmet$/.test(n));
+    nativeHats.forEach((n) => { sk.meshes[n].visible = !gear.helmet && ALWAYS.includes(n.replace(/_\d+$/, '')); });
+    Object.keys(sk.meshes).forEach((n) => { if (/_Cape$/.test(n)) sk.meshes[n].visible = false; });
+    if (gear.helmet && !gear.hideHelm) { const s = st(gear.helmet); kayPiece(sk, HELM_MESH[s], 'head', s === 'shadow' || s === 'nightsilk' ? STYLE_COL[s] : s === 'holy' || s === 'cleric' ? 0xe8c060 : STYLE_COL[s], METAL[s], gear.helmet.rarity); }
+    if (gear.cape && !gear.hideCape) { const s = st(gear.cape); kayPiece(sk, CAPE_MESH[s], 'chest', STYLE_COL[s], 0, gear.cape.rarity); }
+    /* hair styles and race features (head-bone space: the head is about 1.1 tall and 1.1 wide) */
+    const helmOn = !!(gear.helmet && !gear.hideHelm), hairCol = look.hair != null ? look.hair : 0x5a3a22, bodyM = (() => { let m = null; sk.wrap.traverse((o) => { if (!m && o.isSkinnedMesh && o.material && !Array.isArray(o.material)) m = o.material; }); return m; })();
+    const flat = (c) => { let m; if (bodyM && bodyM.clone) { m = bodyM.clone(); m.map = null; m.emissive && m.emissive.set(0); m.vertexColors = false; m.skinning = false; m.color = new T.Color(c).convertSRGBToLinear(); } else m = new T.MeshLambertMaterial({ color: new T.Color(c).convertSRGBToLinear() }); m.needsUpdate = true; return m; };
+    const hm = flat(new T.Color(hairCol)), skm = flat(look.skin != null ? look.skin : 0xf2c0a0);
+    const longHair = look.hs === 1 || (look.gender === 'f' && look.hs !== 3 && look.hs !== 2);
+    if (longHair) { /* head-bone space: the head is about x ±0.54, z -0.49..0.53 */
+      boxAt(sk, 'head', 1.0, 0.86, 0.2, hm, 0, 0.14, -0.47);
+      [-1, 1].forEach((k) => boxAt(sk, 'head', 0.1, 0.66, 0.5, hm, k * 0.55, 0.22, -0.2));
+      if (look.gender === 'f' && !helmOn) { const pt = boxAt(sk, 'head', 0.26, 0.6, 0.24, hm, 0, 0.2, -0.64); if (pt) pt.rotation.x = 0.25; } }
+    if (look.hs === 2 && !helmOn) for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2, cn = new T.Mesh(new T.ConeGeometry(0.14, 0.45, 5), hm); cn.position.set(Math.cos(a) * 0.32, 1.12, Math.sin(a) * 0.3 - 0.04); cn.rotation.set(Math.sin(a) * 0.45, 0, -Math.cos(a) * 0.45); stick(sk, 'head', cn); }
+    if (look.race === 'elf') [-1, 1].forEach((k) => { const e = new T.Mesh(new T.ConeGeometry(0.09, 0.5, 6), skm); e.position.set(k * 0.68, 0.55, -0.05); e.rotation.z = -k * 1.15; stick(sk, 'head', e); });
+    if (look.race === 'dwarf') { boxAt(sk, 'head', 0.8, 0.36, 0.22, hm, 0, 0.08, 0.36); boxAt(sk, 'head', 0.5, 0.28, 0.2, hm, 0, -0.2, 0.32); }
+    if (look.race === 'orc') [-1, 1].forEach((k) => { const tk = new T.Mesh(new T.ConeGeometry(0.06, 0.22, 6), new T.MeshStandardMaterial({ color: 0xf0ead8, roughness: 0.5 })); tk.position.set(k * 0.2, 0.22, 0.54); stick(sk, 'head', tk); });
+    const rs = { human: 1, elf: 1.04, dwarf: 0.88, orc: 1.08 }[look.race] || 1, gs = look.gender === 'f' ? 0.96 : 1;
+    sk.wrap.scale.set(rs * gs * (look.race === 'dwarf' ? 1.1 : 1), rs * gs, rs * gs * (look.race === 'dwarf' ? 1.1 : 1));
+  }
+  const APP = RU.APPEARANCE || { SKINS: [], HAIRS: [], SHIRTS: [] };
+  /* turn the saved choices (indices) into colours */
+  function lookOf(race, gender, app) {
+    if (!app) return { race, gender };
+    return { race, gender, skin: APP.SKINS[app.skin], hair: APP.HAIRS[app.hair], hs: app.hs | 0, shirt: APP.SHIRTS[app.shirt] };
+  }
+  /* what you wear: main gear (items.js types) plus gloves / pants from the extra equipment */
+  function gearOf(eq, ext, ty) {
+    const g = {}; ['helmet', 'armor', 'cape', 'boots'].forEach((s) => { const it = eq && eq[s]; if (!it) return; g[s] = typeof it === 'string' ? { type: ty && ty[s], rarity: it } : { type: it.type, rarity: it.rarity }; });
+    if (ext) ['gloves', 'pants'].forEach((s) => { const it = ext[s]; if (it) g[s] = { type: null, rarity: it.rarity }; });
+    const Q = window.AF_EQUIP; if (Q && Q.st && Q.st.hide && ext) { g.hideHelm = !!Q.st.hide.helmet; g.hideCape = !!Q.st.hide.cape; }
+    return g;
+  }
   /* for icons.js and the armory preview: build weapons and a dressed, animated hero away from the world */
   D.api = {
     WSPEC, WDEF, KIND, makePiece, wlib,
-    hero(cls, eq, wtype, rarity) {
+    lookOf, gearOf,
+    hero(cls, eq, wtype, rarity, look, gear) {
       const kind = KIND[cls] || 'knight', sk = makeSkin(kind); if (!sk) return null;
       sk.cls = cls; dress(sk, cls, eq || {}, rarity || 'common', false, wtype); weaponGlow(sk, rarity);
-      if (cls === 'healer') sk.o.traverse((m) => { if (m.isMesh) m.material.color.setRGB(1.0, 0.97, 0.88); });
+      outfit(sk, look || {}, gear || gearOf(eq, null), cls);
       play(sk, sk.set === '2h' ? '2H_Melee_Idle' : 'Idle');
       return { root: sk.wrap, update: (dt) => sk.mixer.update(dt), attack: () => { const list = ATKSET[sk.set] || ATK[cls] || ATK.warrior; play(sk, list[0], { once: true, restart: true, ts: 1.4 }); setTimeout(() => play(sk, sk.set === '2h' ? '2H_Melee_Idle' : 'Idle', { fade: 0.3 }), 900); } };
     }
@@ -477,7 +566,8 @@
       let sk = skins.get(X.PL);
       if (sk && sk.kind !== kind) { X.PL.root.remove(sk.wrap); skins.delete(X.PL); sk = null; }
       if (!sk) sk = attach(X.PL, kind);
-      if (sk) { sk.cls = cls; const eq = X.P && X.P.eq, w = eq && eq.weapon; dress(sk, cls, eq, w ? w.rarity : 'common', false, w && w.type && (!window.AF_ITEMS || window.AF_ITEMS.canUse(w, cls)) ? w.type : null); weaponGlow(sk, eq && eq.weapon ? eq.weapon.rarity : null); if (cls === 'healer') sk.o.traverse((m) => { if (m.isMesh && !m.userData.tint) { m.userData.tint = 1; m.material.color.setRGB(1.0, 0.97, 0.88); } }); }
+      if (sk) { sk.cls = cls; const eq = X.P && X.P.eq, w = eq && eq.weapon; dress(sk, cls, eq, w ? w.rarity : 'common', false, w && w.type && (!window.AF_ITEMS || window.AF_ITEMS.canUse(w, cls)) ? w.type : null); weaponGlow(sk, eq && eq.weapon ? eq.weapon.rarity : null);
+        const pr = C && C.prof, ext = window.AF_EQUIP && window.AF_EQUIP.st ? window.AF_EQUIP.st.eq : null; outfit(sk, pr ? lookOf(pr.race, pr.gender, pr.app) : {}, gearOf(eq, ext), cls); }
       hideOld(X.PL);
     }
     // other players
@@ -485,7 +575,8 @@
       if (!o || !o.H) return; const app = APPS.get(o.H), cls = (app && app.cls) || 'warrior', kind = KIND[cls] || 'knight';
       let sk = skins.get(o.H); if (sk && sk.kind !== kind) { o.H.root.remove(sk.wrap); skins.delete(o.H); sk = null; }
       if (!sk) sk = attach(o.H, kind);
-      if (sk) { sk.cls = cls; const eq = { helmet: o.eq && o.eq.helmet, cape: o.eq && o.eq.cape }; dress(sk, cls, eq, o.eq && o.eq.weapon || 'common', false, o.eq && o.eq.wt); weaponGlow(sk, o.eq && o.eq.weapon); }
+      if (sk) { sk.cls = cls; const eq = { helmet: o.eq && o.eq.helmet, cape: o.eq && o.eq.cape }; dress(sk, cls, eq, o.eq && o.eq.weapon || 'common', false, o.eq && o.eq.wt); weaponGlow(sk, o.eq && o.eq.weapon);
+        outfit(sk, app ? lookOf(app.race, app.gender, app) : {}, gearOf(o.eq, null, o.eq && o.eq.ty), cls); }
       hideOld(o.H);
     });
     // NPCs (story NPCs and the village chief)
@@ -564,7 +655,9 @@
     t: '<path d="M6 21V6l6-3 6 3v15"/><path d="M10 21v-5h4v5"/><path d="M4 21h16"/>',
     o: '<path d="M5 3v18"/><path d="M5 4h12l-2 4 2 4H5"/>',
     b: '<path d="M4 4l7 7M4 4v4M4 4h4"/><path d="M20 4l-7 7M20 4v4M20 4h-4"/><path d="M7 14l-3 3 3 3 3-3M17 14l3 3-3 3-3-3"/>',
-    q: '<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>'
+    q: '<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>',
+    team: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M2 20a6 6 0 0 1 12 0"/><path d="M10 20a6 6 0 0 1 12 0"/><path d="M12 3l1 2"/>',
+    m: '<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/>'
   };
   safe('ui', () => {
     const fl = document.createElement('link'); fl.rel = 'stylesheet'; fl.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap'; document.head.appendChild(fl);
@@ -572,16 +665,18 @@
     css.textContent = `
     :root{--ember:#e07a3a;--ember-2:#ffb066;--bone:#e3d6bd;--iron:rgba(14,12,11,.86);--iron-line:rgba(224,122,58,.32);--blood:#a8322a;--display-dark:'Cinzel','Trajan Pro','Times New Roman',serif}
     #afVig{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 60%,rgba(0,0,0,.3) 100%)}
-    #afMenu{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:41;display:flex;gap:3px;padding:5px;border-radius:6px;background:var(--iron);border:1px solid var(--iron-line);box-shadow:0 0 0 1px #000,0 10px 28px rgba(0,0,0,.6);max-width:calc(100vw - 680px);overflow-x:auto;scrollbar-width:none}
+    #afMenu{position:fixed;left:330px;right:185px;margin:0 auto;width:max-content;max-width:calc(100vw - 515px);flex-wrap:wrap;justify-content:center;top:max(10px,env(safe-area-inset-top,0px));z-index:41;display:flex;gap:2px;padding:5px;border-radius:6px;background:var(--iron);border:1px solid var(--iron-line);box-shadow:0 0 0 1px #000,0 10px 28px rgba(0,0,0,.6);overflow:hidden}
     #afMenu::-webkit-scrollbar{display:none}
     #afMenu[hidden]{display:none!important}
-    #afMenu button{all:unset;box-sizing:border-box;position:relative;flex:none;width:40px;height:40px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#cdbfa6;transition:background .15s,color .15s}
+    #afMenu .lb{position:absolute;left:0;right:0;bottom:3px;text-align:center;font:600 9.5px/1 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+    #afMenu button svg{margin-bottom:11px}
+    #afMenu button{all:unset;box-sizing:border-box;position:relative;flex:none;width:51px;height:50px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#cdbfa6;transition:background .15s,color .15s}
     #afMenu button:hover{background:rgba(224,122,58,.14);color:#fff1dc}
     #afMenu button:focus-visible{outline:2px solid var(--ember);outline-offset:1px}
     #afMenu button.on,#afMenu button.afOn{background:linear-gradient(180deg,#c4642c,#7d3418);color:#fff1dc;box-shadow:inset 0 0 0 1px rgba(255,190,120,.4)}
     #afMenu button[hidden]{display:none!important}
     #afMenu svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-    #afMenu .k{position:absolute;right:3px;bottom:1px;font:700 9px/1 system-ui,sans-serif;opacity:.6}
+    #afMenu .k{position:absolute;right:3px;top:2px;padding:1px 3px;border-radius:3px;background:rgba(0,0,0,.55);font:800 8.5px/1 system-ui,sans-serif;opacity:.85}
     #afMenu button::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);white-space:nowrap;padding:4px 8px;border-radius:4px;background:#0c0a09;color:var(--bone);font:600 12px system-ui,sans-serif;opacity:0;pointer-events:none;transition:opacity .12s;border:1px solid var(--iron-line)}
     #afMenu button:hover::after,#afMenu button:focus-visible::after{opacity:1}
     #afDock{display:none!important}
@@ -629,7 +724,9 @@
       if (btn.dataset.afMenu) return;
       const txt = btn.textContent.trim(), m = txt.match(/^(.*?)\s*\(([A-Z0-9])\)\s*$/i), label = m ? m[1] : txt, key = m ? m[2].toLowerCase() : '';
       btn.dataset.afMenu = '1'; btn.dataset.k = key; btn.dataset.tip = label + (key ? ' · ' + key.toUpperCase() : ''); btn.setAttribute('aria-label', label); btn.removeAttribute('style');
-      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[key] || '<circle cx="12" cy="12" r="7"/>') + '</svg>' + (key ? '<span class="k">' + key.toUpperCase() + '</span>' : '');
+      const SHORT = { c: 'Nhân vật', j: 'Trang bị+', y: 'Kỹ năng', n: 'Nhiệm vụ', p: 'Nghề', g: 'Trang sức', h: 'Thú cưỡi', u: 'Đấu giá', v: 'Đấu trường', t: 'Thử thách', o: 'Phe phái', b: 'PvP', k: 'Xã hội', q: 'Nhiệm vụ' };
+      const ico = ICONS[key] || (/Đội|Bang/.test(label) ? ICONS.team : '<circle cx="12" cy="12" r="7"/>'), name = SHORT[key] || label.split(/[&·]/)[0].trim().slice(0, 10);
+      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ico + '</svg><span class="lb">' + name + '</span>' + (key ? '<span class="k">' + key.toUpperCase() + '</span>' : '');
       new MutationObserver(() => { if (btn.textContent.trim() !== key.toUpperCase() && btn.textContent.trim().length > 1) { delete btn.dataset.afMenu; dressBtn(btn); } }).observe(btn, { childList: true, characterData: true, subtree: true });
     }
     function gather() {

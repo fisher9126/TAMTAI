@@ -354,7 +354,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/js/items.js?v=10"></script>
-<script src="/js/rules.js?v=11"></script>
+<script src="/js/rules.js?v=12"></script>
 <script>
 (function(){
 'use strict';
@@ -656,7 +656,7 @@ function addOther(p){
   const H=buildHumanoid((window.AF_CLASS&&window.AF_CLASS.colorsFor&&window.AF_CLASS.colorsFor(p))||{skin:SKINS[p.id%SKINS.length],shirt:SHIRTS[p.id%SHIRTS.length],pants:0x3a3348,hair:HAIRS[(p.id*7)%HAIRS.length]}); if(window.AF_CLASS&&window.AF_CLASS.shape) window.AF_CLASS.shape(H,p.app);
   scene.add(H.root);
   const o={id:p.id,name:p.name,role:p.role,level:p.level,H,x:p.x,z:p.z,f:p.f,tx:p.x,tz:p.z,tf:p.f,anim:p.anim||0,walk:0,eq:{}};
-  SLOTS.forEach(sl=>{ o.eq[sl]=p.eq?p.eq[sl]:null; applyEquipTo(H,sl,o.eq[sl]); }); o.eq.wt=p.eq&&p.eq.wt||null;
+  SLOTS.forEach(sl=>{ o.eq[sl]=p.eq?p.eq[sl]:null; applyEquipTo(H,sl,o.eq[sl]); }); o.eq.wt=p.eq&&p.eq.wt||null; o.eq.ty=p.eq&&p.eq.ty||null;
   const lab=document.createElement('div'); lab.className='lbl player'; labelsEl.appendChild(lab); o.lab=lab;
   others.set(p.id,o); labelOther(o);
 }
@@ -963,9 +963,9 @@ function hitCone(kind,combo,range,cosA){ const fx=Math.sin(R.facing), fz=Math.co
 function canAct(){ return running&&R.alive&&!invOpen&&!dialogOpen&&R.dodgeT<0&&R.dashT<0&&!(window.AF_COMBAT&&time<window.AF_COMBAT.stunUntil); }
 function doAttack(){ if(!canAct()||R.atkCd>0)return; const t=nearestEnemy(window.AF_CLASS?window.AF_CLASS.autoRange:4.5); if(t) faceToward(t);
   R.combo=R.comboT>0?(R.combo+1)%3:0; R.comboT=0.9; R.atkT=0; R.atkCd=R.combo===2?0.55:0.4; R.atkHit=false; }
-function doSpin(){ if(!canAct()||R.sk1Cd>0)return; if(R.mp<15){ toast('Không đủ mana'); return; } R.mp-=15; R.sk1Cd=5; R.spinT=0; R.spinHit=false; }
-function doDash(){ if(!canAct()||R.sk2Cd>0)return; if(R.mp<10){ toast('Không đủ mana'); return; } const t=nearestEnemy(7); if(t) faceToward(t);
-  R.mp-=10; R.sk2Cd=4; R.dashT=0; R.dashDx=Math.sin(R.facing); R.dashDz=Math.cos(R.facing); R.dashHit=new Set(); }
+function doSpin(){ if(!canAct()||R.sk1Cd>0)return; const c=AF_RULES.ATTACKS.spin.mp; if(R.mp<c){ toast('Không đủ mana'); return; } R.mp-=c; R.sk1Cd=5; R.spinT=0; R.spinHit=false; }
+function doDash(){ if(!canAct()||R.sk2Cd>0)return; if(R.mp<AF_RULES.ATTACKS.dash.mp){ toast('Không đủ mana'); return; } const t=nearestEnemy(7); if(t) faceToward(t);
+  R.mp-=AF_RULES.ATTACKS.dash.mp; R.sk2Cd=4; R.dashT=0; R.dashDx=Math.sin(R.facing); R.dashDz=Math.cos(R.facing); R.dashHit=new Set(); }
 let moveDir={x:0,z:0};
 function doDodge(){ if(window.AF_COMBAT&&time<window.AF_COMBAT.stunUntil)return; if(!running||!R.alive||invOpen||dialogOpen||R.dodgeCd>0||R.dodgeT>=0)return; if(R.st<25){ toast('Không đủ thể lực'); return; }
   R.st-=25; R.dodgeCd=0.7; R.dodgeT=0; R.invuln=0.4; NET.send({t:'act',k:'dodge'}); const m=Math.hypot(moveDir.x,moveDir.z);
@@ -993,7 +993,7 @@ function updateHud(){
   $('hMpI').style.width=(R.mp/s.maxMp*100)+'%'; $('hMpT').textContent=Math.floor(R.mp)+' / '+s.maxMp;
   $('hStI').style.width=(R.st/s.maxSt*100)+'%';
   setCd($('skA'),R.atkCd,0.55,false); setCd($('sk1'),R.sk1Cd,5,true); setCd($('sk2'),R.sk2Cd,4,true); setCd($('skD'),R.dodgeCd,0.7,false); setCd($('skP'),R.potCd,8,true); setCd($('skM'),R.mpCd||0,8,true);
-  $('sk1').classList.toggle('dim',R.mp<15); $('sk2').classList.toggle('dim',R.mp<10); $('skP').classList.toggle('dim',P.potions<=0); $('skM').classList.toggle('dim',(P.mpotions|0)<=0);
+  $('sk1').classList.toggle('dim',R.mp<AF_RULES.ATTACKS.spin.mp); $('sk2').classList.toggle('dim',R.mp<AF_RULES.ATTACKS.dash.mp); $('skP').classList.toggle('dim',P.potions<=0); $('skM').classList.toggle('dim',(P.mpotions|0)<=0);
   const t=R.target; const tg=$('tgt');
   if(t&&!t.dead&&R.targetT>0){ tg.hidden=false; $('tgtN').innerHTML=esc(t.d.name)+' <small>Lv '+t.lv+(t.d.boss?' · Boss':'')+'</small>'; $('tgtI').style.width=(t.hp/t.maxHp*100)+'%'; $('tgtT').textContent=Math.max(0,Math.ceil(t.hp))+' / '+t.maxHp; }
   else tg.hidden=true;
@@ -1043,7 +1043,7 @@ function updatePlayer(dt){
   const sprint=(keys['shift'])&&mm>0.1&&R.st>1;
   let speed=5.4*(1+s.spd/100)*(window.AF_COMBAT&&time<window.AF_COMBAT.slowUntil?0.6:1); if(sprint){ speed*=1.6; R.st=Math.max(0,R.st-28*dt); } else R.st=Math.min(s.maxSt,R.st+24*dt);
   if(R.atkT>=0&&R.atkT<0.25) speed*=0.35;
-  R.mp=Math.min(s.maxMp,R.mp+3*dt);
+  R.mp=Math.min(s.maxMp,R.mp+AF_RULES.mpRegenPerSec(s.maxMp)*dt);
   if(time-R.lastHurt>6&&R.alive) R.hp=Math.min(s.maxHp,R.hp+s.maxHp*0.02*dt);
   let vx=0,vz=0;
   if(R.dodgeT>=0){ R.dodgeT+=dt; vx=R.dodgeDx*13; vz=R.dodgeDz*13; if(R.dodgeT>0.34) R.dodgeT=-1; }
@@ -1255,7 +1255,7 @@ function onNet(m){
     case 'join': addOther(m.p); NET.online=m.online||NET.online; if(isFriend(m.p.name)) toast('<b>'+esc(m.p.name)+'</b> vừa online'); break;
     case 'leave': removeOther(m.id); NET.online=m.online||NET.online; break;
     case 'states': m.list.forEach(r=>{ const o=others.get(r[0]); if(o){ o.tx=r[1]; o.tz=r[2]; o.tf=r[3]; o.anim=r[4]; } }); break;
-    case 'look': { const o=others.get(m.id); if(o){ SLOTS.forEach(sl=>{ const r=m.eq?m.eq[sl]:null; if(o.eq[sl]!==r){ o.eq[sl]=r; applyEquipTo(o.H,sl,r); } }); o.eq.wt=m.eq&&m.eq.wt||null; o.level=m.level; labelOther(o); } break; }
+    case 'look': { const o=others.get(m.id); if(o){ SLOTS.forEach(sl=>{ const r=m.eq?m.eq[sl]:null; if(o.eq[sl]!==r){ o.eq[sl]=r; applyEquipTo(o.H,sl,r); } }); o.eq.wt=m.eq&&m.eq.wt||null; o.eq.ty=m.eq&&m.eq.ty||null; o.level=m.level; labelOther(o); } break; }
     case 'correct': R.x=m.x; R.z=m.z; NET.last.x=m.x; NET.last.z=m.z; break;
     case 'chat':
       if(m.ch==='whisper'){ if(m.to) chatLine('whisper','Bạn → <b>'+esc(m.to)+'</b>: '+esc(m.text)); else { chatLine('whisper','<b>'+esc(m.from)+'</b> nhắn riêng: '+esc(m.text)); NET.lastWhisper=m.from; } }
@@ -1367,7 +1367,7 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 </script>
 <script src="js/social.js?v=10"></script>
 <script src="js/combat.js?v=11"></script>
-<script src="js/classes.js?v=9"></script>
+<script src="js/classes.js?v=10"></script>
 <script src="js/zones.js?v=10"></script>
 <script src="js/story.js?v=9"></script>
 <script src="js/tree.js?v=9"></script>
@@ -1391,15 +1391,15 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/visual.js?v=10"></script>
 <script src="js/monsters.js?v=9"></script>
 <script src="js/mobs.js?v=1"></script>
-<script src="js/armory.js?v=2"></script>
+<script src="js/armory.js?v=3"></script>
 <script src="js/iso.js?v=3"></script>
 <script src="js/vfx.js?v=1"></script>
 <script src="js/vendor/GLTFLoader.js?v=1"></script>
 <script src="js/vendor/SkeletonUtils.js?v=1"></script>
-<script src="js/dark.js?v=4"></script>
+<script src="js/dark.js?v=6"></script>
 <script src="js/blocks.js?v=1"></script>
-<script src="js/icons.js?v=1"></script>
+<script src="js/icons.js?v=2"></script>
 <script src="js/nav.js?v=1"></script>
-<script src="js/hud.js?v=1"></script>
+<script src="js/hud.js?v=2"></script>
 </body>
 </html>
