@@ -354,7 +354,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/js/items.js?v=10"></script>
-<script src="/js/rules.js?v=12"></script>
+<script src="/js/rules.js?v=13"></script>
 <script>
 (function(){
 'use strict';
@@ -1043,7 +1043,7 @@ function updatePlayer(dt){
   const sprint=(keys['shift'])&&mm>0.1&&R.st>1;
   let speed=5.4*(1+s.spd/100)*(window.AF_COMBAT&&time<window.AF_COMBAT.slowUntil?0.6:1); if(sprint){ speed*=1.6; R.st=Math.max(0,R.st-28*dt); } else R.st=Math.min(s.maxSt,R.st+24*dt);
   if(R.atkT>=0&&R.atkT<0.25) speed*=0.35;
-  R.mp=Math.min(s.maxMp,R.mp+AF_RULES.mpRegenPerSec(s.maxMp)*dt);
+  R.mp=Math.min(s.maxMp,R.mp+(AF_RULES.mpRegenPerSec?AF_RULES.mpRegenPerSec(s.maxMp):1)*dt);
   if(time-R.lastHurt>6&&R.alive) R.hp=Math.min(s.maxHp,R.hp+s.maxHp*0.02*dt);
   let vx=0,vz=0;
   if(R.dodgeT>=0){ R.dodgeT+=dt; vx=R.dodgeDx*13; vz=R.dodgeDz*13; if(R.dodgeT>0.34) R.dodgeT=-1; }
@@ -1367,7 +1367,7 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 </script>
 <script src="js/social.js?v=10"></script>
 <script src="js/combat.js?v=11"></script>
-<script src="js/classes.js?v=10"></script>
+<script src="js/classes.js?v=11"></script>
 <script src="js/zones.js?v=10"></script>
 <script src="js/story.js?v=9"></script>
 <script src="js/tree.js?v=9"></script>
@@ -1391,15 +1391,15 @@ setInterval(()=>{ if(NET.ready) NET.send({t:'ping',at:Date.now()}); },25000);
 <script src="js/visual.js?v=10"></script>
 <script src="js/monsters.js?v=9"></script>
 <script src="js/mobs.js?v=1"></script>
-<script src="js/armory.js?v=3"></script>
+<script src="js/armory.js?v=4"></script>
 <script src="js/iso.js?v=3"></script>
 <script src="js/vfx.js?v=1"></script>
 <script src="js/vendor/GLTFLoader.js?v=1"></script>
 <script src="js/vendor/SkeletonUtils.js?v=1"></script>
-<script src="js/dark.js?v=6"></script>
+<script src="js/dark.js?v=7"></script>
 <script src="js/blocks.js?v=1"></script>
-<script src="js/icons.js?v=2"></script>
+<script src="js/icons.js?v=3"></script>
 <script src="js/nav.js?v=1"></script>
-<script src="js/hud.js?v=2"></script>
+<script src="js/hud.js?v=3"></script>
 </body>
 </html>
