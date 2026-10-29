@@ -180,5 +180,15 @@
     const url = I.face(key, () => Dk.api.hero(pr.cls, {}, null, 'common', look, gear)); if (!url) return;
     faceKey = key; el.style.backgroundImage = 'url(' + url + ')'; el.classList.add('afFace');
   }
-  setInterval(() => { if (H.isRunning()) try { portrait(); } catch (e) { /* ignore */ } }, 1500);
+  /* staff (Admin / GM) get a menu button that opens the admin page in a new tab */
+  function adminBtn() {
+    const me = H.NET && H.NET.me, bar = document.getElementById('afMenu');
+    if (!me || !bar || (me.role !== 'admin' && me.role !== 'gm') || document.getElementById('afAdminBtn')) return;
+    const b = document.createElement('button'); b.id = 'afAdminBtn'; b.type = 'button'; b.dataset.afMenu = '1'; b.dataset.tip = 'Trang quản trị'; b.setAttribute('aria-label', 'Trang quản trị');
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span class="lb">Quản trị</span>';
+    b.style.color = '#ffcf6a'; b.addEventListener('click', () => window.open('/admin.html', '_blank', 'noopener'));
+    bar.classList.add('adm'); bar.appendChild(b);
+  }
+  if (!document.getElementById('afAdmCss')) { const st = document.createElement('style'); st.id = 'afAdmCss'; st.textContent = '#afMenu.adm button{width:48px!important}'; document.head.appendChild(st); }
+  setInterval(() => { if (H.isRunning()) try { portrait(); adminBtn(); } catch (e) { /* ignore */ } }, 1500);
 })();

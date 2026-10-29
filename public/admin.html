@@ -92,6 +92,25 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--
 .sec{display:none}
 .sec.on{display:flex;flex-direction:column;gap:18px}
 @media (max-width:640px){ aside.side{padding:14px} nav.menu{flex-direction:row;flex-wrap:wrap} nav.menu a{min-height:40px} .who{display:none} .kv{grid-template-columns:minmax(0,1fr)} }
+.gcat{border:1px solid var(--line2);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--panel2)}
+.gtop{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end}
+.gopt{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:10px;flex:1 1 440px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{min-height:38px;padding:0 13px;border-radius:7px;border:1px solid var(--line);background:#171e2e;font-weight:600;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;max-height:420px;overflow-y:auto;padding-right:4px}
+.gc{display:flex;flex-direction:column;gap:4px;text-align:left;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#141b2b;cursor:pointer;color:var(--fg)}
+.gc:hover{border-color:var(--gold);background:#1a2234}
+.gc b{font-size:14px}
+.gc small{color:var(--muted);font-size:12px;line-height:1.35}
+.gc .tg{display:flex;gap:6px;flex-wrap:wrap}
+.gc .tg span{font-size:11px;padding:1px 7px;border-radius:9px;background:#1e2638;color:#cbc6ba}
+.gpick{display:flex;flex-direction:column;gap:8px}
+.it .rm{margin-left:6px;border:0;background:none;color:inherit;cursor:pointer;font-size:14px;padding:0 2px}
+#drawer .panel h2{font-size:15px}
+.pwbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:8px;background:#183224;color:var(--ok);font-size:14px}
+.pwbox code{font-size:16px;font-weight:700;color:#fff;background:#0d1a12;padding:3px 9px;border-radius:6px;user-select:all}
+@media (max-width:640px){ .gopt{grid-template-columns:repeat(2,minmax(0,1fr))} }
 </style>
 </head>
 <body>
@@ -146,20 +165,28 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--
       <div class="head"><h1>Gửi quà &amp; thông báo</h1></div>
       <form class="panel" id="giftForm">
         <h2>Gửi quà vào hộp thư</h2>
-        <p class="sub" style="margin:0">Người chơi nhận quà ngay nếu đang online, hoặc ở lần đăng nhập tiếp theo.</p>
+        <p class="sub" style="margin:0">Người chơi nhận quà ngay nếu đang online, hoặc ở lần đăng nhập tiếp theo. Tối đa 20 món mỗi lần gửi.</p>
         <div class="form">
           <label class="f" for="gTarget">Gửi cho<select id="gTarget"><option value="one">Một người chơi (nhập ID)</option><option value="online">Tất cả người đang online</option><option value="all">Toàn bộ máy chủ (chỉ Admin)</option></select></label>
           <label class="f" for="gId">ID người chơi<input id="gId" type="number" min="1" placeholder="Ví dụ: 12"></label>
           <label class="f" for="gGold">Vàng<input id="gGold" type="number" min="0" value="0"></label>
           <label class="f" for="gPot">Bình máu<input id="gPot" type="number" min="0" value="0"></label>
-        </div>
-        <div class="form">
-          <label class="f" for="gSlot">Vật phẩm<select id="gSlot"><option value="">Không gửi vật phẩm</option><option value="weapon">Vũ khí</option><option value="helmet">Mũ</option><option value="armor">Giáp</option><option value="boots">Giày</option><option value="cape">Áo choàng</option><option value="random">Ngẫu nhiên</option></select></label>
-          <label class="f" for="gRar">Độ hiếm<select id="gRar"><option value="common">Thường</option><option value="rare" selected>Hiếm</option><option value="epic">Sử thi</option><option value="legend">Huyền thoại</option></select></label>
-          <label class="f" for="gLvl">Cấp đồ<input id="gLvl" type="number" min="1" max="60" value="5"></label>
           <label class="f" for="gMsg">Lời nhắn<input id="gMsg" maxlength="200" placeholder="Đền bù bảo trì ngày 27/10"></label>
         </div>
-        <div class="acts"><button class="btn pri" type="submit">Gửi quà</button></div>
+        <div class="gcat">
+          <div class="gtop">
+            <div class="tabs" id="gTabs" role="tablist"></div>
+            <div class="gopt">
+              <label class="f" for="gRar">Độ hiếm<select id="gRar"><option value="common">Thường</option><option value="rare" selected>Hiếm</option><option value="epic">Sử thi</option><option value="legend">Huyền thoại</option></select></label>
+              <label class="f" for="gLvl">Cấp đồ<input id="gLvl" type="number" min="1" max="60" value="10"></label>
+              <label class="f" for="gQty">Số lượng<input id="gQty" type="number" min="1" max="20" value="1"></label>
+              <label class="f" for="gCls">Lọc class<select id="gCls"><option value="">Mọi class</option></select></label>
+            </div>
+          </div>
+          <div class="gcards" id="gCards"></div>
+        </div>
+        <div class="gpick"><h2>Quà sẽ gửi <span class="muted" id="gCount"></span></h2><div class="items" id="gPicked"></div></div>
+        <div class="acts"><button class="btn pri" type="submit">Gửi quà</button><button class="btn" type="button" id="gClear">Xóa danh sách</button></div>
       </form>
       <form class="panel" id="annForm">
         <h2>Thông báo trong game</h2>
@@ -185,6 +212,8 @@ label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--
 <div id="toast" hidden role="status"></div>
 
 <script src="/js/items.js"></script>
+<script src="/js/equipdata.js"></script>
+<script src="/js/geardata.js"></script>
 <script>
 (function(){
 'use strict';
@@ -193,7 +222,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmt=t=>t?new Date(t).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'—';
 const nf=n=>Number(n||0).toLocaleString('vi-VN');
 const ROLE={admin:'Admin',gm:'GM',player:'Người chơi'};
-const ACTION={kick:'Đưa ra khỏi game',mute:'Cấm chat',unmute:'Bỏ cấm chat',ban:'Khóa tài khoản',unban:'Mở khóa',gift:'Gửi quà',announce:'Thông báo',role:'Đổi vai trò',report_close:'Xử lý báo cáo',suspect:'Nghi gian lận'};
+const ACTION={kick:'Đưa ra khỏi game',mute:'Cấm chat',unmute:'Bỏ cấm chat',ban:'Khóa tài khoản',unban:'Mở khóa',gift:'Gửi quà',announce:'Thông báo',role:'Đổi vai trò',report_close:'Xử lý báo cáo',suspect:'Nghi gian lận',password:'Đặt lại mật khẩu'};
 let token=null, me=null, timer=null;
 try{ token=localStorage.getItem('af-token'); }catch(e){}
 
@@ -250,6 +279,17 @@ async function loadPlayers(){
 $('searchForm').addEventListener('submit',e=>{ e.preventDefault(); lastQ=$('q').value.trim(); loadPlayers().catch(err=>toast(err.message,true)); });
 document.addEventListener('click',e=>{ const tr=e.target.closest('tr.click[data-id]'); if(tr&&!e.target.closest('a,button')) openPlayer(Number(tr.dataset.id)); });
 
+/* account box: passwords are one-way hashed on the server, so they cannot be shown; an admin can set a new one */
+function acct(p){
+  return '<div class="panel"><h2>Tài khoản</h2><div class="kv"><div><span>Tên đăng nhập</span><span>'+esc(p.username)+'</span></div><div><span>ID</span><span>'+p.id+'</span></div><div><span>IP cuối</span><span>'+esc(p.last_ip||'—')+'</span></div><div><span>Mật khẩu</span><span class="muted">được mã hóa</span></div></div>'+
+    '<p class="sub" style="margin:0">Mật khẩu lưu dạng mã hóa một chiều nên không ai xem được, kể cả admin. Khi người chơi quên mật khẩu, đặt mật khẩu mới rồi gửi cho họ.</p>'+
+    (me.role==='admin'?'<div class="form"><label class="f" for="pwNew">Mật khẩu mới (để trống = tạo ngẫu nhiên)<input id="pwNew" maxlength="72" autocomplete="new-password" placeholder="ít nhất 6 ký tự"></label><button class="btn" data-a="pw" type="button">Đặt lại mật khẩu</button></div><div id="pwOut"></div>':'<p class="sub" style="margin:0">Chỉ Admin được đặt lại mật khẩu.</p>')+'</div>';
+}
+function extEq(d){
+  const ex=(d.ext&&d.ext.eq)||{}, ac=(d.acc&&d.acc.eq)||{}, nm={gloves:'Găng tay',pants:'Quần',offhand:'Vũ khí phụ',ring1:'Nhẫn 1',ring2:'Nhẫn 2',neck:'Dây chuyền',charm:'Bùa'};
+  const one=(k,x)=>x?'<span class="it r-'+x.rarity+'">'+esc(x.name)+' · '+(RN[x.rarity]||'')+' · cấp '+x.ilvl+'</span>':'<span class="it" style="border-color:#2a3450;color:#7d8597">'+nm[k]+': trống</span>';
+  return ['gloves','pants','offhand'].map(k=>one(k,ex[k])).join('')+['ring1','ring2','neck','charm'].map(k=>one(k,ac[k])).join('');
+}
 /* player drawer */
 let openId=null;
 async function openPlayer(id){
@@ -261,7 +301,9 @@ async function openPlayer(id){
   dr.innerHTML='<header><div><h2>'+esc(p.username)+'</h2><div class="sub">ID '+p.id+' · '+(ROLE[p.role]||p.role)+' · tạo ngày '+fmt(p.created_at)+'</div><div style="margin-top:8px">'+statusPills(p)+'</div></div><button class="x" type="button" id="drX" aria-label="Đóng">✕</button></header>'+
     '<div class="kv"><div><span>Cấp</span><span>'+(data.level||1)+'</span></div><div><span>Vàng</span><span>'+nf(data.gold)+'</span></div><div><span>Bình máu</span><span>'+(data.potions||0)+'</span></div><div><span>Nhiệm vụ</span><span>'+((data.quest||0)+1)+' / 4</span></div><div><span>Thời gian chơi</span><span>'+dur(p.play_seconds||0)+'</span></div><div><span>Đăng nhập cuối</span><span>'+fmt(p.last_login)+'</span></div><div><span>IP gần nhất</span><span>'+esc(p.last_ip||'—')+'</span></div><div><span>Bạn bè</span><span>'+d.friends.length+'</span></div></div>'+
     (p.banned_until>t?'<div class="pill p-bad" style="white-space:normal">Bị khóa đến '+fmt(p.banned_until)+(p.ban_reason?' · '+esc(p.ban_reason):'')+'</div>':'')+
-    '<div class="panel"><h2>Đang mặc</h2><div class="items">'+eq+'</div><h2>Túi đồ · '+((data.inv||[]).length)+' / 24</h2><div class="items">'+((data.inv||[]).map(it).join('')||'<span class="muted">Túi trống</span>')+'</div></div>'+
+    acct(p)+'<div class="panel"><h2>Đang mặc</h2><div class="items">'+eq+extEq(d)+'</div><h2>Túi đồ chính · '+((data.inv||[]).length)+'</h2><div class="items">'+((data.inv||[]).map(it).join('')||'<span class="muted">Túi trống</span>')+'</div>'+
+    '<h2>Túi trang bị phụ · '+((d.ext&&d.ext.bag||[]).length)+'</h2><div class="items">'+(((d.ext&&d.ext.bag)||[]).map(it).join('')||'<span class="muted">Trống</span>')+'</div>'+
+    '<h2>Túi trang sức · '+((d.acc&&d.acc.bag||[]).length)+'</h2><div class="items">'+(((d.acc&&d.acc.bag)||[]).map(it).join('')||'<span class="muted">Trống</span>')+'</div></div>'+
     '<div class="panel"><h2>Xử lý</h2><div class="acts">'+
       '<button class="btn" data-a="kick" type="button"'+(p.online?'':' disabled')+'>Đưa ra khỏi game</button>'+
       (p.muted_until>t?'<button class="btn" data-a="unmute" type="button">Bỏ cấm chat</button>':'<button class="btn" data-a="mute" type="button">Cấm chat 60 phút</button>')+
@@ -286,6 +328,7 @@ $('drawer').addEventListener('click',async e=>{
     if(a==='banok') r=await api('/api/admin/player/'+id+'/ban',{days:Number($('banDays').value),reason:$('banReason').value});
     if(a==='unban') r=await api('/api/admin/player/'+id+'/ban',{days:0});
     if(a==='role') r=await api('/api/admin/player/'+id+'/role',{role:$('roleSel').value});
+    if(a==='pw'){ const d=await api('/api/admin/player/'+id+'/password',{password:$('pwNew').value}); $('pwNew').value=''; $('pwOut').innerHTML='<div class="pwbox">Mật khẩu mới của <b>'+esc(d.username)+'</b>: <code>'+esc(d.password)+'</code><button class="btn" type="button" id="pwCopy">Chép</button></div>'; const c=$('pwCopy'); if(c) c.onclick=()=>{ try{ navigator.clipboard.writeText(d.password); toast('Đã chép mật khẩu'); }catch(_){ } }; toast(d.message); refresh(true); return; }
     if(a==='gift'){ location.hash='#gifts'; $('gTarget').value='one'; $('gId').value=id; $('drawer').hidden=true; return; }
     if(r) toast(r.message); openPlayer(id); refresh(true);
   }catch(err){ toast(err.message,true); }
@@ -303,12 +346,44 @@ $('repRows').addEventListener('click',async e=>{
 });
 /* gifts + announce */
 $('gTarget').addEventListener('change',()=>{ $('gId').disabled=$('gTarget').value!=='one'; });
+/* gift catalogue: every weapon kind, every armour style per slot, the extra pieces and the accessories */
+const IT=window.AF_ITEMS, EQD=window.AF_EQUIPDATA, GD=window.AF_GEARDATA;
+const RN={common:'Thường',rare:'Hiếm',epic:'Sử thi',legend:'Huyền thoại'};
+const GTABS=[['weapon','Vũ khí'],['helmet','Mũ'],['armor','Giáp'],['boots','Giày'],['cape','Áo choàng'],['ext','Găng, quần, khiên, sách'],['acc','Trang sức']];
+let gTab='weapon'; const picked=[];
+$('gCls').innerHTML='<option value="">Mọi class</option>'+IT.CLS.map(c=>'<option value="'+c+'">'+IT.CLSNAME[c]+'</option>').join('');
+function catalog(){
+  const cls=$('gCls').value, out=[];
+  if(gTab==='weapon') Object.keys(IT.WTYPES).forEach(k=>{ const w=IT.WTYPES[k]; if(!cls||w.cls===cls) out.push({cat:'main',slot:'weapon',type:k,name:w.name,tags:[IT.CLSNAME[w.cls],'Sát thương x'+w.atk],desc:w.perk}); });
+  else if(['helmet','armor','boots','cape'].includes(gTab)) Object.keys(IT.ATYPES).forEach(k=>{ const a=IT.ATYPES[k]; if(cls&&a.cls!==cls) return; out.push({cat:'main',slot:gTab,type:k,name:(IT.ANAME[gTab]&&IT.ANAME[gTab][k])||a.name,tags:[IT.CLSNAME[a.cls]||'Mọi class',a.name],desc:a.perk}); });
+  else if(gTab==='ext'){ out.push({cat:'ext',slot:'gloves',name:'Găng tay',tags:['Mọi class','Sức đánh, chí mạng'],desc:'Ô găng tay. Có dòng phụ ngẫu nhiên, đồ Sử thi/Huyền thoại có ô khảm ngọc.'});
+    out.push({cat:'ext',slot:'pants',name:'Quần',tags:['Mọi class','Giáp, máu'],desc:'Ô quần. Có dòng phụ ngẫu nhiên và ô khảm ngọc ở bậc cao.'});
+    out.push({cat:'ext',slot:'offhand',sub:'shield',name:'Khiên',tags:['Tay trái','Giáp, máu'],desc:'Vũ khí phụ cho lối chơi chống chịu.'});
+    out.push({cat:'ext',slot:'offhand',sub:'tome',name:'Sách phép',tags:['Tay trái','Mana, sức đánh'],desc:'Vũ khí phụ cho pháp sư và hồi máu.'}); }
+  else Object.keys(GD.KINDS).forEach(k=>out.push({cat:'acc',kind:k,name:GD.KINDS[k],tags:['Mọi class',{ring:'Sức đánh',neck:'Máu',charm:'Giáp'}[k]+' gốc'],desc:'Chỉ số phụ ngẫu nhiên theo độ hiếm. Đồ Sử thi/Huyền thoại có thể thuộc một bộ trang sức.'}));
+  return out;
+}
+function renderGift(){
+  $('gTabs').innerHTML=GTABS.map(t=>'<button class="tab" type="button" role="tab" data-gt="'+t[0]+'" aria-selected="'+(gTab===t[0])+'">'+t[1]+'</button>').join('');
+  const list=catalog();
+  $('gCards').innerHTML=list.length?list.map((c,i)=>'<button class="gc" type="button" data-gi="'+i+'"><b>'+esc(c.name)+'</b><span class="tg">'+c.tags.map(t=>'<span>'+esc(t)+'</span>').join('')+'</span><small>'+esc(c.desc||'')+'</small><small style="color:var(--gold)">Bấm để thêm vào quà</small></button>').join(''):'<div class="empty">Không có món nào cho class này ở mục này.</div>';
+  const n=picked.reduce((a,p)=>a+p.qty,0); $('gCount').textContent=n?'· '+n+' / 20 món':'';
+  $('gPicked').innerHTML=picked.length?picked.map((p,i)=>'<span class="it r-'+p.rarity+'">'+esc(p.name)+' · '+RN[p.rarity]+' · cấp '+p.level+(p.qty>1?' × '+p.qty:'')+'<button class="rm" type="button" data-rm="'+i+'" aria-label="Bỏ">✕</button></span>').join(''):'<span class="muted">Chưa chọn món nào. Bấm một món trong danh mục ở trên.</span>';
+}
+$('gTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-gt]'); if(!b)return; gTab=b.dataset.gt; renderGift(); });
+$('gCls').addEventListener('change',renderGift);
+$('gCards').addEventListener('click',e=>{ const b=e.target.closest('[data-gi]'); if(!b)return; const c=catalog()[Number(b.dataset.gi)]; if(!c)return;
+  const total=picked.reduce((a,p)=>a+p.qty,0), qty=Math.max(1,Math.min(20-total,Math.round(Number($('gQty').value)||1)));
+  if(qty<=0){ toast('Mỗi lần gửi tối đa 20 món.',true); return; }
+  picked.push({cat:c.cat,slot:c.slot,type:c.type,kind:c.kind,sub:c.sub,name:c.name,rarity:$('gRar').value,level:Math.max(1,Math.min(60,Math.round(Number($('gLvl').value)||1))),qty}); renderGift(); });
+$('gPicked').addEventListener('click',e=>{ const b=e.target.closest('[data-rm]'); if(!b)return; picked.splice(Number(b.dataset.rm),1); renderGift(); });
+$('gClear').addEventListener('click',()=>{ picked.length=0; renderGift(); });
+renderGift();
 $('giftForm').addEventListener('submit',async e=>{
   e.preventDefault(); const tv=$('gTarget').value; const target=tv==='one'?Number($('gId').value):tv;
   if(tv==='one'&&!target){ toast('Nhập ID người chơi nhận quà.',true); return; }
-  const slot=$('gSlot').value; const itemsList=slot?[{slot:slot==='random'?null:slot,rarity:$('gRar').value,level:Number($('gLvl').value)||1}]:[];
   const btn=e.submitter||e.target.querySelector('button[type=submit]'); btn.disabled=true;
-  try{ const r=await api('/api/admin/gift',{target,gold:Number($('gGold').value)||0,potions:Number($('gPot').value)||0,items:itemsList,message:$('gMsg').value}); toast(r.message); }
+  try{ const r=await api('/api/admin/gift',{target,gold:Number($('gGold').value)||0,potions:Number($('gPot').value)||0,items:picked.map(p=>({cat:p.cat,slot:p.slot,type:p.type,kind:p.kind,sub:p.sub,rarity:p.rarity,level:p.level,qty:p.qty})),message:$('gMsg').value}); toast(r.message); picked.length=0; renderGift(); }
   catch(err){ toast(err.message,true); } finally{ btn.disabled=false; }
 });
 $('annForm').addEventListener('submit',async e=>{ e.preventDefault(); try{ const r=await api('/api/admin/announce',{text:$('annText').value}); toast(r.message); $('annText').value=''; }catch(err){ toast(err.message,true); } });
@@ -322,7 +397,7 @@ async function loadLog(){ const d=await api('/api/admin/log'); $('logRows').inne
   try{ const r=await fetch('/api/me',{headers:{Authorization:'Bearer '+token}}); const d=await r.json(); if(!r.ok) throw new Error(d.error);
     if(d.user.role!=='admin'&&d.user.role!=='gm'){ showLogin('Tài khoản '+d.user.username+' không có quyền quản trị. Đăng nhập bằng tài khoản Admin.'); return; }
     me=d.user; showApp(); }
-  catch(e){ showLogin(); }
+  catch(e){ console.error('admin start', e); showLogin(); }
 })();
 })();
 </script>

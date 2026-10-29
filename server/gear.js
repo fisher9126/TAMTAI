@@ -66,6 +66,13 @@ const ops = {
     p.gr.bag.splice(i, 1); const gold = G.worth(it); p.data.gold += gold; p.gr.dirty = true; C.pushMe(p); info(p);
     API.sys(p, 'Đã bán ' + it.name + ' được ' + gold + ' vàng.');
   },
+  gsellmany(p, m) {
+    if (!p.gr || !Array.isArray(m.ids)) return;
+    const want = new Set(m.ids.slice(0, 100).map(String)); let n = 0, gold = 0;
+    p.gr.bag = p.gr.bag.filter((it) => { if (!want.has(String(it.id)) || it.lock) return true; n++; gold += G.worth(it); return false; });
+    if (!n) return;
+    p.data.gold += gold; p.gr.dirty = true; C.pushMe(p); info(p); API.sys(p, 'Đã bán nhanh ' + n + ' trang sức được ' + gold + ' vàng.');
+  },
   gdis(p, m) {
     const i = find(p, m.id); if (i < 0) return; const it = p.gr.bag[i];
     if (it.lock) return API.sys(p, 'Món này đang khóa, mở khóa trước khi phân rã.');
@@ -107,4 +114,4 @@ function onConnect(p) { load(p); apply(p); info(p); }
 function onLeave(p) { try { save(p); } catch (err) { console.error('gear save', err.message); } }
 function tick() { C.online.forEach((p) => { if (p.gr && p.gr.dirty && now() % 15000 < 1000) save(p); }); }
 
-module.exports = { init, onConnect, onLeave, onKill, tick, ops };
+module.exports = { info, init, onConnect, onLeave, onKill, tick, ops };

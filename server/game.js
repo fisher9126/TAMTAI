@@ -205,6 +205,14 @@ function onSell(p, m) {
   send(p, { t: 'sold', name: it.name, gold: items.itemValue(it) });
   pushMe(p); deliverMail(p);
 }
+/* quick sell: many pieces of the main bag at once (ids from the bag only, equipped pieces are not in it) */
+function onSellMany(p, m) {
+  if (!Array.isArray(m.ids) || !m.ids.length) return;
+  const want = new Set(m.ids.slice(0, 100).map(String)), d = p.data; let n = 0, gold = 0;
+  d.inv = d.inv.filter((it) => { if (!want.has(String(it.id))) return true; n++; gold += items.itemValue(it); return false; });
+  if (!n) return;
+  d.gold += gold; send(p, { t: 'sold', name: n + ' món', gold }); pushMe(p); deliverMail(p);
+}
 function onPotion(p) {
   const d = p.data; const t = now();
   if (d.potions <= 0 || (p.potCd || 0) > t + 150 || combat.potionBlocked(p)) return send(p, { t: 'potion', ok: false });
@@ -222,19 +230,30 @@ function pendingMail(userId) {
   return db.all('SELECT id, from_name, message, payload, created_at FROM mail WHERE user_id = ? AND claimed_at IS NULL ORDER BY id LIMIT 50', userId)
     .map((r) => ({ id: r.id, from: r.from_name, message: r.message, payload: JSON.parse(r.payload), at: r.created_at }));
 }
+/* the extra bags (gloves/pants/off-hand in equip.js, accessories in gear.js) load in their plugins' onConnect */
+const EQD = require('../public/js/equipdata.js');
+const GD = require('../public/js/geardata.js');
+function pluginInfo(p, name) { try { const m = require('./' + name); if (m.info) m.info(p); } catch (err) { /* plugin missing */ } }
 function deliverMail(p) {
   const list = pendingMail(p.id); if (!list.length) return;
-  let changed = false;
+  let changed = false, ext = false, acc = false;
   list.forEach((ml) => {
     const its = (ml.payload.items || []).map(items.validItem).filter(Boolean);
-    if (p.data.inv.length + its.length > rules.INV_SIZE) { if (!p.mailWarned) { p.mailWarned = true; sys(p, 'Bạn có quà từ ' + ml.from + ' nhưng túi đồ đầy. Bán bớt đồ để nhận.'); } return; }
+    const xs = (ml.payload.xitems || []).map(EQD.clean).filter(Boolean), gs = (ml.payload.gitems || []).map(GD.clean).filter(Boolean);
+    if ((xs.length && !p.eqx) || (gs.length && !p.gr)) return; // bags not loaded yet; delivered after the plugins load
+    const full = p.data.inv.length + its.length > rules.INV_SIZE ? 'túi đồ' : xs.length && p.eqx.bag.length + xs.length > EQD.BAG ? 'túi trang bị phụ' : gs.length && p.gr.bag.length + gs.length > GD.BAG ? 'túi trang sức' : null;
+    if (full) { if (!p.mailWarned) { p.mailWarned = true; sys(p, 'Bạn có quà từ ' + ml.from + ' nhưng ' + full + ' đầy. Bán bớt đồ để nhận.'); } return; }
     const r = db.run('UPDATE mail SET claimed_at = ? WHERE id = ? AND claimed_at IS NULL', now(), ml.id);
     if (r.changes !== 1) return;
     p.data.gold += ml.payload.gold || 0; p.data.potions += ml.payload.potions || 0; its.forEach((it) => p.data.inv.push(it));
-    send(p, { t: 'gift', from: ml.from, message: ml.message, payload: Object.assign({}, ml.payload, { items: its }) });
+    if (xs.length) { xs.forEach((it) => p.eqx.bag.push(it)); p.eqx.dirty = true; ext = true; }
+    if (gs.length) { gs.forEach((it) => p.gr.bag.push(it)); p.gr.dirty = true; acc = true; }
+    send(p, { t: 'gift', from: ml.from, message: ml.message, payload: { gold: ml.payload.gold || 0, potions: ml.payload.potions || 0, items: its.concat(xs, gs) } });
     changed = true;
   });
   if (changed) { p.mailWarned = false; pushMe(p); }
+  if (ext) pluginInfo(p, 'equip');
+  if (acc) pluginInfo(p, 'gear');
 }
 function sendMail(userIds, fromName, message, payload) {
   const s = J(payload); const t = now(); let n = 0;
@@ -242,12 +261,28 @@ function sendMail(userIds, fromName, message, payload) {
   userIds.forEach((id) => { const p = online.get(id); if (p) deliverMail(p); });
   return n;
 }
+/* gift spec from the admin page: items = [{ cat: 'main'|'ext'|'acc', slot, type, kind, sub, rarity, level, qty }] (at most 20 pieces) */
 function buildGift(spec) {
-  const out = { gold: int(spec.gold, 0, 1e7, 0), potions: int(spec.potions, 0, 100, 0), items: [] };
-  (Array.isArray(spec.items) ? spec.items : []).slice(0, 10).forEach((it) => {
-    const slot = items.SLOTS.includes(it.slot) ? it.slot : items.SLOTS[Math.floor(Math.random() * items.SLOTS.length)];
-    const rarity = items.RAR.includes(it.rarity) ? it.rarity : 'rare';
-    out.items.push(items.makeItem(slot, rarity, int(it.level, 1, 60, 1)));
+  const out = { gold: int(spec.gold, 0, 1e7, 0), potions: int(spec.potions, 0, 100, 0), items: [], xitems: [], gitems: [] };
+  let left = 20;
+  (Array.isArray(spec.items) ? spec.items : []).slice(0, 20).forEach((it) => {
+    if (!it || typeof it !== 'object') return;
+    const rarity = items.RAR.includes(it.rarity) ? it.rarity : 'rare', lvl = int(it.level, 1, 60, 1);
+    const qty = Math.min(left, int(it.qty, 1, 20, 1)); left -= qty;
+    for (let i = 0; i < qty; i++) {
+      if (it.cat === 'ext') {
+        const slot = EQD.SLOTS.includes(it.slot) ? it.slot : EQD.SLOTS[Math.floor(Math.random() * EQD.SLOTS.length)];
+        let x = EQD.roll(slot, rarity, lvl);
+        if (slot === 'offhand' && (it.sub === 'shield' || it.sub === 'tome')) for (let k = 0; k < 30 && x.sub !== it.sub; k++) x = EQD.roll(slot, rarity, lvl);
+        out.xitems.push(x);
+      } else if (it.cat === 'acc') {
+        const kind = GD.KINDS[it.kind] ? it.kind : Object.keys(GD.KINDS)[Math.floor(Math.random() * 3)];
+        out.gitems.push(GD.roll(kind, rarity, lvl));
+      } else {
+        const slot = items.SLOTS.includes(it.slot) ? it.slot : items.SLOTS[Math.floor(Math.random() * items.SLOTS.length)];
+        out.items.push(items.makeItem(slot, rarity, lvl, null, null, typeof it.type === 'string' ? it.type : null));
+      }
+    }
   });
   return out;
 }
@@ -277,6 +312,7 @@ function connect(ws, user) {
   character.onConnect(p);
   zones.onConnect(p);
   events.onConnect(p);
+  deliverMail(p); // gifts for the extra bags need the plugins loaded first
   ws.on('message', (m) => onMessage(p, m));
   ws.on('close', () => { if (online.get(p.id) === p) removeOnline(p); });
 }
@@ -306,6 +342,7 @@ function onMessage(p, raw) {
     case 'equip': return onEquip(p, m);
     case 'unequip': return onUnequip(p, m);
     case 'sell': return onSell(p, m);
+    case 'sellmany': return onSellMany(p, m);
     case 'potion': return onPotion(p);
     case 'mpotion': return onManaPotion(p);
     case 'intro': if (!p.data.seenIntro) { p.data.seenIntro = true; p.saveDirty = true; } return;

@@ -60,6 +60,13 @@ function changePassword(userId, oldPw, newPw) {
   db.run('UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?', hashPassword(newPw, salt), salt, userId);
   db.run('DELETE FROM sessions WHERE user_id = ?', userId);
 }
+function setPassword(userId, pw) {
+  pw = String(pw || '');
+  if (pw.length < 6 || pw.length > 72) fail('Mật khẩu mới cần từ 6 đến 72 ký tự.');
+  const salt = crypto.randomBytes(16).toString('hex');
+  db.run('UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?', hashPassword(pw, salt), salt, userId);
+  db.run('DELETE FROM sessions WHERE user_id = ?', userId);
+}
 function cleanupSessions() { db.run('DELETE FROM sessions WHERE expires_at < ?', Date.now()); }
 
-module.exports = { register, login, logout, userFromToken, banMessage, changePassword, cleanupSessions, NAME_RE };
+module.exports = { register, login, logout, userFromToken, banMessage, changePassword, setPassword, cleanupSessions, NAME_RE };

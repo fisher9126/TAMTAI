@@ -77,6 +77,11 @@ function playerRow(r) {
   return { id: r.id, username: r.username, role: r.role, level: r.level || 1, gold: r.gold || 0, online: game.isOnline(r.id), created_at: r.created_at, last_login: r.last_login,
     banned_until: r.banned_until, ban_reason: r.ban_reason, muted_until: r.muted_until, play_seconds: r.play_seconds || 0 };
 }
+function bagOf(table, id, live) {
+  const o = game.online.get(id), l = o && live(o); if (l) return { eq: l.eq, bag: l.bag };
+  try { const r = db.get('SELECT data FROM ' + table + ' WHERE user_id = ?', id); if (r) { const d = JSON.parse(r.data); return { eq: d.eq || {}, bag: d.bag || [] }; } } catch (e) { /* table missing */ }
+  return { eq: {}, bag: [] };
+}
 const ADMIN_ROUTES = [
   ['GET', /^\/api\/admin\/overview$/, false, () => {
     const day = Date.now() - 864e5;
@@ -108,6 +113,7 @@ const ADMIN_ROUTES = [
       friends: db.all("SELECT u.username FROM friends f JOIN users u ON u.id = f.friend_id WHERE f.user_id = ? AND f.status = 'accepted'", id).map((x) => x.username),
       chat: db.all('SELECT channel, target, text, created_at FROM chat_log WHERE user_id = ? ORDER BY id DESC LIMIT 30', id),
       mail: db.all('SELECT id, from_name, message, created_at, claimed_at FROM mail WHERE user_id = ? ORDER BY id DESC LIMIT 20', id),
+      ext: bagOf('equip_player', id, (o) => o.eqx), acc: bagOf('gear_player', id, (o) => o.gr),
       reports: db.all('SELECT r.id, r.reason, r.status, r.created_at, u.username AS reporter FROM reports r JOIN users u ON u.id = r.reporter_id WHERE r.target_id = ? ORDER BY r.id DESC LIMIT 20', id)
     };
   }],
@@ -128,6 +134,17 @@ const ADMIN_ROUTES = [
     game.setBan(id, days, b.reason ? game.cleanText(b.reason) : null); game.logAdmin(u.id, days ? 'ban' : 'unban', id, days ? days + ' ngày. ' + (b.reason || '') : null);
     return { ok: true, message: days ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.' };
   }],
+  ['POST', /^\/api\/admin\/player\/(\d+)\/password$/, true, (req, u, m, q, b) => {
+    /* passwords are stored as one-way scrypt hashes, so nobody can read them; an admin sets a new one instead */
+    const id = Number(m[1]); const t = db.get('SELECT id, username, role FROM users WHERE id = ?', id);
+    if (!t) throw Object.assign(new Error('Không tìm thấy người chơi.'), { status: 404 });
+    if (t.role === 'admin' && t.id !== u.id) throw Object.assign(new Error('Không đặt lại mật khẩu của Admin khác.'), { status: 403 });
+    let pw = String(b.password || '').trim();
+    if (!pw) { const A = 'abcdefghjkmnpqrstuvwxyz23456789'; pw = ''; for (let i = 0; i < 10; i++) pw += A[require('crypto').randomInt(A.length)]; }
+    auth.setPassword(id, pw); game.kick(id, 'Mật khẩu tài khoản vừa được quản trị viên đặt lại. Đăng nhập lại bằng mật khẩu mới.');
+    game.logAdmin(u.id, 'password', id, 'Đặt lại mật khẩu');
+    return { ok: true, password: pw, username: t.username, message: 'Đã đặt mật khẩu mới cho ' + t.username + '.' };
+  }],
   ['POST', /^\/api\/admin\/player\/(\d+)\/role$/, true, (req, u, m, q, b) => {
     const id = Number(m[1]); const role = ['player', 'gm', 'admin'].includes(b.role) ? b.role : null;
     if (!role) throw Object.assign(new Error('Vai trò không hợp lệ.'), { status: 400 });
@@ -136,17 +153,18 @@ const ADMIN_ROUTES = [
   }],
   ['POST', /^\/api\/admin\/gift$/, false, (req, u, m, q, b) => {
     const gift = game.buildGift(b);
-    if (!gift.gold && !gift.potions && !gift.items.length) throw Object.assign(new Error('Quà đang trống. Thêm vàng, bình máu hoặc vật phẩm.'), { status: 400 });
+    const all = gift.items.concat(gift.xitems, gift.gitems);
+    if (!gift.gold && !gift.potions && !all.length) throw Object.assign(new Error('Quà đang trống. Thêm vàng, bình máu hoặc vật phẩm.'), { status: 400 });
     let ids;
     if (b.target === 'all') {
       if (u.role !== 'admin') throw Object.assign(new Error('Chỉ quản trị viên cấp cao được gửi quà cho toàn máy chủ.'), { status: 403 });
       ids = db.all('SELECT id FROM users').map((r) => r.id);
     } else if (b.target === 'online') ids = game.onlineList().map((p) => p.id);
     else { const id = Number(b.target); if (!db.get('SELECT id FROM users WHERE id = ?', id)) throw Object.assign(new Error('Không tìm thấy người nhận.'), { status: 404 }); ids = [id]; }
-    if (u.role === 'gm' && (gift.gold > 5000 || gift.items.some((it) => it.rarity === 'legend'))) throw Object.assign(new Error('GM chỉ được gửi tối đa 5.000 vàng và không gửi đồ Huyền thoại.'), { status: 403 });
+    if (u.role === 'gm' && (gift.gold > 5000 || all.some((it) => it.rarity === 'legend'))) throw Object.assign(new Error('GM chỉ được gửi tối đa 5.000 vàng và không gửi đồ Huyền thoại.'), { status: 403 });
     const msg = game.cleanText(b.message) || 'Quà từ ban quản trị';
     const n = game.sendMail(ids, u.username, msg, gift);
-    game.logAdmin(u.id, 'gift', ids.length === 1 ? ids[0] : null, 'Gửi ' + n + ' người: ' + gift.gold + ' vàng, ' + gift.potions + ' bình máu, ' + gift.items.map((i) => i.name + ' (' + items.RNAME[i.rarity] + ')').join(', '));
+    game.logAdmin(u.id, 'gift', ids.length === 1 ? ids[0] : null, 'Gửi ' + n + ' người: ' + gift.gold + ' vàng, ' + gift.potions + ' bình máu, ' + all.map((i) => i.name + ' (' + items.RNAME[i.rarity] + ')').join(', '));
     return { ok: true, message: 'Đã gửi quà tới ' + n + ' người chơi.' };
   }],
   ['POST', /^\/api\/admin\/announce$/, false, (req, u, m, q, b) => {

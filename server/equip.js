@@ -148,6 +148,13 @@ const ops = {
     p.eqx.bag.splice(f.i, 1); giveGems(p, f.it.sock.filter(Boolean));
     const gold = E.worth(f.it); p.data.gold += gold; mark(p); C.pushMe(p); info(p); sys(p, 'Đã bán ' + E.nameOf(f.it) + ' được ' + gold + ' vàng.');
   },
+  esellmany(p, m) {
+    if (!p.eqx || !Array.isArray(m.ids)) return;
+    const want = new Set(m.ids.slice(0, 100).map(String)); let n = 0, gold = 0;
+    p.eqx.bag = p.eqx.bag.filter((it) => { if (!want.has(String(it.id)) || it.lock) return true; giveGems(p, (it.sock || []).filter(Boolean)); n++; gold += E.worth(it); return false; });
+    if (!n) return;
+    p.data.gold += gold; mark(p); C.pushMe(p); info(p); sys(p, 'Đã bán nhanh ' + n + ' món trang bị phụ được ' + gold + ' vàng.');
+  },
   edis(p, m) {
     const f = findAny(p, m.id); if (!f || f.where !== 'bag') return;
     if (f.it.lock) return sys(p, 'Món này đang khóa, mở khóa trước khi phân rã.');
@@ -316,7 +323,7 @@ function tick() {
   });
 }
 
-module.exports = { init, onConnect, onLeave, onKill, tick, ops, refresh: (p) => { if (p.eqx) apply(p); else C.pushMe(p); },
+module.exports = { info, init, onConnect, onLeave, onKill, tick, ops, refresh: (p) => { if (p.eqx) apply(p); else C.pushMe(p); },
   /* used by other plugins (raid, battleground, siege): give a random extra piece of this rarity; returns the item, or null when the extra bag is full */
   grantPiece(p, rarity) {
     const s = p.eqx; if (!s || s.bag.length >= E.BAG) return null;

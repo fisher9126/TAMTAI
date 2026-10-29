@@ -13,7 +13,7 @@
   const STAT = { atk: 'Sức đánh', def: 'Giáp', hp: 'Máu', mp: 'Mana', crit: 'Chí mạng', spd: 'Tốc độ' };
   const PCT = { crit: 1, spd: 1 };
   const fmtv = (k, v) => (v > 0 ? '+' : '') + (Math.round(v * 10) / 10) + (PCT[k] ? '%' : '');
-  const A = { open: false, tab: 'bag', filter: 'all', sort: 'best', mine: false, sel: null, arm: null, cat: null };
+  const A = { open: false, tab: 'bag', filter: 'all', sort: 'best', mine: false, sel: null, arm: null, cat: null, multi: false, pick: new Set() };
   window.AF_ARMORY = A;
 
   /* ---------- icons ---------- */
@@ -79,6 +79,20 @@
   #afArm .stats div{display:flex;justify-content:space-between;padding:4px 7px;border-radius:4px;background:rgba(255,255,255,.04)}
   #afArm .stats span:last-child{font-weight:700;color:#fff1dc;font-variant-numeric:tabular-nums}
   #afArm .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+  #afArm .chip.qsb{background:rgba(224,122,58,.14);border-color:rgba(224,122,58,.5);color:#ffcf9a}
+  #afArm .chip.qsb.on{background:#e07a3a;color:#1a0f08}
+  #afArm .qs{display:flex;flex-direction:column;gap:8px;margin:-2px 0 10px;padding:10px;border-radius:6px;background:rgba(224,122,58,.07);border:1px solid rgba(224,122,58,.28)}
+  #afArm .qs .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  #afArm .qs .lbl{font-size:12px;color:#cdbfa6;margin-right:2px}
+  #afArm .qs .sum{font-size:12.5px;color:#e3d6bd;margin-right:auto}
+  #afArm .qs .warnx{font-size:12px;color:#ffb08a}
+  #afArm .qs .go{all:unset;cursor:pointer;padding:7px 14px;border-radius:4px;background:#c8433a;color:#fff;font-weight:700;font-size:12.5px}
+  #afArm .qs .go.arm{background:#ff6a3a;box-shadow:0 0 0 2px #ffd0a0}
+  #afArm .qs .go[disabled]{opacity:.45;cursor:default}
+  #afArm .cell.pk{outline:2px solid #ff7a4a;outline-offset:1px}
+  #afArm .cell .tick{position:absolute;right:3px;top:3px;width:15px;height:15px;border-radius:3px;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.45);font:900 11px/13px system-ui;color:#fff;text-align:center}
+  #afArm .cell.pk .tick{background:#ff6a3a;border-color:#ffd0a0}
+  #afArm.multi .cell.lockd{opacity:.4;cursor:not-allowed}
   #afArm .chip{all:unset;cursor:pointer;padding:5px 10px;border-radius:4px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-weight:600;font-size:12px}
   #afArm .chip:hover{border-color:rgba(255,190,120,.45)}
   #afArm .chip.on{background:linear-gradient(180deg,#c4642c,#7d3418);color:#fff1dc;border-color:#2a1206}
@@ -259,6 +273,29 @@
     return list.slice().sort(by);
   }
   function gain(o, wn) { if (!o.usable) return -1e9; const r = rival(o, wn); return score(o.stats) - (r ? score(r.stats) : 0); }
+  /* ---------- quick sell: tick pieces or pick a whole rarity, then sell them in one go (locked pieces are skipped) ---------- */
+  function quickBar(list) {
+    const all = bagItems(), byKey = new Map(all.map((o) => [o.src + ':' + o.id, o]));
+    [...A.pick].forEach((k) => { const o = byKey.get(k); if (!o || o.lock) A.pick.delete(k); });
+    const picked = [...A.pick].map((k) => byKey.get(k)), gold = picked.reduce((a, o) => a + (o.value || 0), 0);
+    const hi = picked.filter((o) => o.rarity === 'epic' || o.rarity === 'legend').length;
+    const cnt = (r) => list.filter((o) => o.rarity === r && !o.lock).length;
+    let h = '<div class="qs"><div class="row"><span class="lbl">Chọn nhanh theo độ hiếm:</span>' +
+      IT.RAR.map((r) => '<button class="chip" type="button" data-a="qsr" data-v="' + r + '" style="color:' + RCOL[r] + ';border-color:' + RCOL[r] + '55"' + (cnt(r) ? '' : ' disabled') + '>' + IT.RNAME[r] + ' (' + cnt(r) + ')</button>').join('') +
+      '<button class="chip" type="button" data-a="qsall">Chọn hết</button><button class="chip" type="button" data-a="qsnone">Bỏ chọn</button></div>';
+    h += '<div class="row"><span class="sum">Đã chọn <b>' + picked.length + '</b> món · nhận <b style="color:#ffd27a">' + num(gold) + '</b> vàng. Bấm vào ô để tích chọn, món đã khóa không bán được.</span>' +
+      '<button class="go' + (A.arm === 'qs' ? ' arm' : '') + '" type="button" data-a="qsgo"' + (picked.length ? '' : ' disabled') + '>' + (A.arm === 'qs' ? 'Bấm lần nữa để bán ' + picked.length + ' món' : 'Bán ' + picked.length + ' món') + '</button></div>';
+    if (hi) h += '<div class="warnx">Có ' + hi + ' món Sử thi/Huyền thoại trong danh sách bán. Kiểm tra lại trước khi bấm.</div>';
+    return h + '</div>';
+  }
+  function quickSell() {
+    const all = bagItems(), byKey = new Map(all.map((o) => [o.src + ':' + o.id, o])), ids = { main: [], ext: [], acc: [] };
+    A.pick.forEach((k) => { const o = byKey.get(k); if (o && !o.lock) ids[o.src].push(o.id); });
+    if (ids.main.length) net({ t: 'sellmany', ids: ids.main });
+    if (ids.ext.length) { zone({ op: 'esellmany', ids: ids.ext }); setTimeout(() => zone({ op: 'einfo' }), 400); }
+    if (ids.acc.length) { zone({ op: 'gsellmany', ids: ids.acc }); setTimeout(() => zone({ op: 'ginfo' }), 400); }
+    A.pick.clear(); A.arm = null; A.sel = null; setTimeout(render, 120); setTimeout(render, 600);
+  }
   function renderBag() {
     const wn = worn(), p = P(); let list = bagItems();
     if (A.filter !== 'all') list = list.filter((o) => o.group === A.filter);
@@ -267,13 +304,16 @@
     const ex = extSt(), ac = accSt();
     let h = '<div class="bar">' + FILTERS.map((f) => '<button class="chip' + (A.filter === f[0] ? ' on' : '') + '" type="button" data-a="flt" data-v="' + f[0] + '">' + f[1] + '</button>').join('') +
       '<select data-a="sort" aria-label="Sắp xếp"><option value="best"' + (A.sort === 'best' ? ' selected' : '') + '>Độ hiếm</option><option value="up"' + (A.sort === 'up' ? ' selected' : '') + '>Mạnh hơn đồ đang mặc</option><option value="lvl"' + (A.sort === 'lvl' ? ' selected' : '') + '>Cấp đồ</option><option value="type"' + (A.sort === 'type' ? ' selected' : '') + '>Theo ô</option></select>' +
-      '<label class="ck"><input type="checkbox" data-a="mine"' + (A.mine ? ' checked' : '') + '> Chỉ đồ class mình</label></div>';
+      '<label class="ck"><input type="checkbox" data-a="mine"' + (A.mine ? ' checked' : '') + '> Chỉ đồ class mình</label>' +
+      '<button class="chip qsb' + (A.multi ? ' on' : '') + '" type="button" data-a="multi">' + (A.multi ? 'Thoát bán nhanh' : 'Bán nhanh') + '</button></div>';
+    if (A.multi) h += quickBar(list);
     h += '<div class="cnt">Túi chính ' + (p.inv || []).length + '/' + RU.INV_SIZE + (E ? ' · Túi phụ ' + (ex.bag || []).length + '/' + ((ex.cap && ex.cap.bag) || E.BAG) : '') + (G ? ' · Trang sức ' + (ac.bag || []).length + '/' + (ac.max || G.BAG) : '') + '</div>';
     if (!list.length) h += '<div class="empty-note">Không có món nào ở mục này. Đánh quái, làm nhiệm vụ hoặc mua ở cửa hàng trong làng.</div>';
     else h += '<div class="grid">' + list.map((o) => {
       const c = RCOL[o.rarity], key = o.src + ':' + o.id, up = o.usable && gain(o, wn) > 0.5;
-      return '<button class="cell' + (A.sel === key ? ' sel' : '') + '" type="button" data-a="sel" data-k="' + key + '" title="' + esc(o.name) + '" style="border-color:' + c + ';background:linear-gradient(160deg,' + c + '22,rgba(0,0,0,.3))">' +
-        picOr(o, c) + (o.enh ? '<span class="en">+' + o.enh + '</span>' : '') + '<span class="lv">' + o.ilvl + '</span>' + (up ? '<span class="up">▲</span>' : '') + (o.lock ? '<span class="lk">' + svg('lock', '#cdbfa6') + '</span>' : '') + (o.usable ? '' : '<span class="no"></span>') + '</button>';
+      const pk = A.multi && A.pick.has(key);
+      return '<button class="cell' + (!A.multi && A.sel === key ? ' sel' : '') + (pk ? ' pk' : '') + (A.multi && o.lock ? ' lockd' : '') + '" type="button" data-a="' + (A.multi ? 'pick' : 'sel') + '" data-k="' + key + '" title="' + esc(o.name) + '" style="border-color:' + c + ';background:linear-gradient(160deg,' + c + '22,rgba(0,0,0,.3))">' +
+        picOr(o, c) + (o.enh ? '<span class="en">+' + o.enh + '</span>' : '') + '<span class="lv">' + o.ilvl + '</span>' + (up ? '<span class="up">▲</span>' : '') + (o.lock ? '<span class="lk">' + svg('lock', '#cdbfa6') + '</span>' : '') + (o.usable ? '' : '<span class="no"></span>') + (A.multi && !o.lock ? '<span class="tick">' + (pk ? '✓' : '') + '</span>' : '') + '</button>';
     }).join('') + '</div>';
     return h;
   }
@@ -401,6 +441,15 @@
   root.addEventListener('click', (e) => {
     const b = e.target.closest('[data-a]'); if (!b || b.disabled) return; const a = b.dataset.a;
     if (a === 'close') { const x = document.getElementById('invX'); if (x) x.click(); else A.close(); return; }
+    if (a === 'multi') { A.multi = !A.multi; A.pick.clear(); A.arm = null; root.classList.toggle('multi', A.multi); render(); return; }
+    if (a === 'pick') { const k = b.dataset.k, o = find(k); if (!o || o.lock) return; if (A.pick.has(k)) A.pick.delete(k); else A.pick.add(k); A.arm = null; render(); return; }
+    if (a === 'qsr' || a === 'qsall') {
+      let list = bagItems(); if (A.filter !== 'all') list = list.filter((o) => o.group === A.filter); if (A.mine) list = list.filter((o) => o.usable);
+      list = list.filter((o) => !o.lock && (a === 'qsall' || o.rarity === b.dataset.v)); const keys = list.map((o) => o.src + ':' + o.id);
+      const allOn = keys.length && keys.every((k) => A.pick.has(k)); keys.forEach((k) => (allOn ? A.pick.delete(k) : A.pick.add(k))); A.arm = null; render(); return;
+    }
+    if (a === 'qsnone') { A.pick.clear(); A.arm = null; render(); return; }
+    if (a === 'qsgo') { if (!A.pick.size) return; if (A.arm !== 'qs') { A.arm = 'qs'; clearTimeout(A.armT); A.armT = setTimeout(() => { A.arm = null; render(); }, 5000); render(); return; } quickSell(); return; }
     if (a === 'sel') { if (!b.dataset.k) return; A.sel = A.sel === b.dataset.k ? null : b.dataset.k; A.arm = null; render(); return; }
     if (a === 'flt') { A.filter = b.dataset.v; render(); return; }
     if (a === 'tab') { A.tab = b.dataset.v; render(); return; }
@@ -425,7 +474,7 @@
     if (E) zone({ op: 'einfo' }); if (G) zone({ op: 'ginfo' });
     render();
   };
-  A.close = function () { A.open = false; root.hidden = true; A.arm = null; };
+  A.close = function () { A.open = false; root.hidden = true; A.arm = null; A.multi = false; A.pick.clear(); root.classList.remove('multi'); };
   /* index.html calls these through openInv / closeInv */
   A.openPanel = A.show; A.closePanel = A.close;
 
