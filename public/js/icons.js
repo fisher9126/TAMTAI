@@ -137,6 +137,17 @@
   };
   IC.ready = () => !!(window.AF_DARK && window.AF_DARK.api && window.AF_DARK.ready);
 
+  /* ---------- face portrait for the HUD: the dressed hero's head, rendered once per look ---------- */
+  IC.face = function (key, make) {
+    const k = 'face:' + key; if (cache[k]) return cache[k];
+    if (!setup()) return null; const hero = make && make(); if (!hero) return null;
+    hero.update(0.01); scene.add(hero.root); hero.root.rotation.y = 0.35; hero.root.updateMatrixWorld(true);
+    const box = new T.Box3().setFromObject(hero.root), top = box.max.y, h = box.max.y - box.min.y, cy = top - h * 0.24;
+    cam.position.set(0.25, cy + 0.08, h * 0.95); cam.near = 0.05; cam.far = 50; cam.updateProjectionMatrix(); cam.lookAt(0, cy, 0);
+    R.setClearColor(0x000000, 0); R.render(scene, cam); const url = R.domElement.toDataURL('image/png'); scene.remove(hero.root);
+    cache[k] = url; return url;
+  };
+
   /* ---------- hero preview: a second small renderer that draws the dressed hero turning slowly ---------- */
   let P = null;
   IC.preview = function (canvas, eqKey, make) {

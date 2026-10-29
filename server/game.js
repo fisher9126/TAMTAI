@@ -54,7 +54,7 @@ function sanitizeSave(d, prev, allowGold) {
   out.seenIntro = !!d.seenIntro;
   return { data: out, warn };
 }
-function lookOf(data) { const eq = {}; items.SLOTS.forEach((s) => { eq[s] = data && data.eq && data.eq[s] ? data.eq[s].rarity : null; }); eq.wt = data && data.eq && data.eq.weapon && data.eq.weapon.type || null; return eq; }
+function lookOf(data) { const eq = {}; items.SLOTS.forEach((s) => { eq[s] = data && data.eq && data.eq[s] ? data.eq[s].rarity : null; }); eq.wt = data && data.eq && data.eq.weapon && data.eq.weapon.type || null; eq.ty = {}; ['helmet', 'armor', 'boots', 'cape'].forEach((s) => { const it = data && data.eq && data.eq[s]; if (it && it.type) eq.ty[s] = it.type; }); return eq; }
 const clsOf = (p) => (p && p.prof && p.prof.cls) || null; /* the player's class, used to roll fitting gear */
 function loadChar(userId) {
   const r = db.get('SELECT data, x, z FROM characters WHERE user_id = ?', userId);

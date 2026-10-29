@@ -135,7 +135,7 @@ function tick() {
       if (fxChanged) sendFx(p);
       dots.forEach(([id, n]) => { if (p.hp > 0) { applyDamage(p, n, id, {}, null); changed = true; } });
       if (p.hp > 0 && t - p.lastHurt > 6000 && p.hp < st.maxHp) { p.hp = Math.min(st.maxHp, p.hp + st.maxHp * 0.02 * 0.5); changed = true; }
-      if (p.mp < st.maxMp) { p.mp = Math.min(st.maxMp, p.mp + 3 * 0.5 * character.mpRegen(p)); changed = true; }
+      if (p.mp < st.maxMp) { p.mp = Math.min(st.maxMp, p.mp + rules.mpRegenPerSec(st.maxMp) * 0.5 * character.mpRegen(p)); changed = true; }
     }
     if (changed || Math.round(p.hp) !== p.sentHp || Math.floor(p.mp) !== p.sentMp) { p.sentHp = Math.round(p.hp); p.sentMp = Math.floor(p.mp); sendVit(p); }
   });

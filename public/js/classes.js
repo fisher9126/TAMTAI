@@ -62,7 +62,25 @@
   #afChar button.af{padding:4px 10px;font-size:12px}#afChar button.af.g{background:#e9edf8}#afChar button.af:disabled{opacity:.4;cursor:default}
   #afChar .mut{color:#aab6d8}
   .sk .nm{position:absolute;left:0;right:0;bottom:2px;text-align:center;font:600 9px system-ui,sans-serif;color:#eef3ff;text-shadow:0 1px 2px #000;pointer-events:none}
-  .sk.dim{opacity:.4}`;
+  .sk.dim{opacity:.4}
+  html body #afCreate{border-radius:0!important;box-shadow:none!important;left:0!important;z-index:9000!important;width:auto!important;padding:0!important;display:grid;grid-template-columns:1fr min(460px,46vw);background:radial-gradient(ellipse at 38% 55%,#2a2018 0%,#100c0a 55%,#050403 100%)!important;border:0!important;overflow:hidden!important}
+  #afCreate[hidden]{display:none!important}
+  #afCreate .cpv{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
+  #afCreate .cpv .stage{width:min(100%,640px);height:min(78vh,720px)}
+  #afCreate .cpv .who{text-align:center;margin-top:-10px}
+  #afCreate .cpv .who b{display:block;font:800 26px 'Cinzel','Times New Roman',serif;letter-spacing:.05em}
+  #afCreate .cpv .who span{color:#cdbfa6;font-size:14px}
+  #afCreate .cpv .hint{position:absolute;left:18px;bottom:14px;color:#8a7f70;font-size:12px}
+  #afCreate .cop{overflow:auto;padding:18px 18px 24px;background:rgba(14,11,10,.92);border-left:1px solid rgba(224,122,58,.3)}
+  #afCreate .cop h2{font:800 22px 'Cinzel','Times New Roman',serif;color:#ffb066;letter-spacing:.04em}
+  #afCreate h4{color:#ffb066!important;letter-spacing:.12em!important}
+  #afCreate .afopt{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:8px!important;color:#e3d6bd!important}
+  #afCreate .afopt[aria-pressed=true]{border-color:#e07a3a!important;background:linear-gradient(90deg,rgba(224,122,58,.25),rgba(224,122,58,.05))!important}
+  #afCreate .afopt small{color:#a89c8a!important}
+  #afCreate .afsw button{width:34px!important;height:34px!important}
+  #afCreate .afsw button[aria-pressed=true]{border-color:#ffb066!important;box-shadow:0 0 0 2px #000,0 0 12px rgba(255,176,102,.7)!important}
+  #afCreate .go{background:linear-gradient(180deg,#c4642c,#7d3418)!important;color:#fff1dc!important;border:1px solid #2a1206!important;border-radius:8px!important;font:800 16px 'Cinzel',serif!important;letter-spacing:.06em}
+  @media (max-width:820px){#afCreate{grid-template-columns:1fr;grid-template-rows:42vh 1fr}#afCreate .cop{border-left:0;border-top:1px solid rgba(224,122,58,.3)}#afCreate .cpv .stage{height:38vh}}`;
   document.head.appendChild(css);
 
   /* ---------- creation screen ---------- */
@@ -70,7 +88,7 @@
   const cr = document.createElement('div'); cr.id = 'afCreate'; cr.hidden = true; document.body.appendChild(cr);
   const swatches = (key, arr) => '<div class="afsw">' + arr.map((c, i) => '<button type="button" data-k="' + key + '" data-v="' + i + '" aria-pressed="' + (L[key] === i) + '" style="background:' + hex(c) + '"></button>').join('') + '</div>';
   function renderCreate() {
-    let h = '<h2>Tạo nhân vật</h2><p class="mut" style="color:#aab6d8;margin:0 0 4px">Mô hình ở giữa màn hình đổi theo lựa chọn của bạn. Chủng tộc, giới tính và lớp không đổi được sau này.</p>';
+    let h = '<h2>Tạo nhân vật</h2><p class="mut" style="color:#a89c8a;margin:0 0 4px">Nhân vật bên trái đổi ngay theo lựa chọn của bạn. Chủng tộc, giới tính và lớp không đổi được sau này.</p>';
     h += '<h4>CHỦNG TỘC</h4><div class="afopts">' + Object.keys(RU.RACES).map((k) => '<button type="button" class="afopt" data-k="race" data-v="' + k + '" aria-pressed="' + (L.race === k) + '"><b>' + RU.RACES[k].name + '</b><small>' + RU.RACES[k].desc + '</small></button>').join('') + '</div>';
     h += '<h4>GIỚI TÍNH</h4><div class="afrow2"><button type="button" class="afopt" data-k="gender" data-v="m" aria-pressed="' + (L.gender === 'm') + '"><b>Nam</b></button><button type="button" class="afopt" data-k="gender" data-v="f" aria-pressed="' + (L.gender === 'f') + '"><b>Nữ</b></button></div>';
     h += '<h4>LỚP NHÂN VẬT</h4><div class="afopts">' + Object.keys(RU.CLASSES).map((k) => { const c = RU.CLASSES[k];
@@ -79,9 +97,20 @@
     h += '<small class="mut" style="color:#aab6d8">Kiểu tóc</small><div class="afrow2">' + A.STYLES.map((n, i) => '<button type="button" class="afopt" data-k="hs" data-v="' + i + '" aria-pressed="' + (L.hs === i) + '"><b>' + n + '</b></button>').join('') + '</div>';
     h += '<small class="mut" style="color:#aab6d8">Màu tóc</small>' + swatches('hair', A.HAIRS) + '<small class="mut" style="color:#aab6d8">Màu áo</small>' + swatches('shirt', A.SHIRTS);
     h += '<button type="button" class="go" data-go>Bắt đầu phiêu lưu</button>';
-    const keep = cr.scrollTop; cr.innerHTML = h; cr.scrollTop = keep;
+    let cop = cr.querySelector('.cop');
+    if (!cop) { cr.innerHTML = '<div class="cpv"><div class="stage" id="afCrStage"></div><div class="who"><b id="afCrCls"></b><span id="afCrRace"></span></div><div class="hint">Kéo nhân vật để xoay · bấm đúp để xem đòn đánh</div></div><div class="cop"></div>'; cop = cr.querySelector('.cop'); }
+    const keep = cop.scrollTop; cop.innerHTML = h; cop.scrollTop = keep;
+    const cc = RU.CLASSES[L.cls]; cr.querySelector('#afCrCls').textContent = cc.name; cr.querySelector('#afCrCls').style.color = cc.color;
+    cr.querySelector('#afCrRace').textContent = RU.RACES[L.race].name + ' · ' + (L.gender === 'f' ? 'Nữ' : 'Nam') + ' · ' + cc.role;
   }
-  function previewLook() { applyOwn(L); }
+  /* the preview is the real hero model (dark.js) drawn alone on its own canvas, rebuilt for every choice */
+  function previewLook() {
+    try { applyOwn(L); } catch (e) { /* old model */ }
+    const I = window.AF_ICONS, Dk = window.AF_DARK, st = cr.querySelector('#afCrStage');
+    if (!I || !I.preview || !Dk || !Dk.api || !Dk.ready || !st) { if (C.creating) setTimeout(previewLook, 500); return; }
+    const look = Dk.api.lookOf(L.race, L.gender, L);
+    I.preview(st, JSON.stringify(L), () => Dk.api.hero(L.cls, {}, null, 'common', look, {}));
+  }
   cr.addEventListener('click', (e) => {
     const go = e.target.closest('[data-go]');
     if (go) { go.disabled = true; send({ t: 'char', op: 'create', race: L.race, gender: L.gender, cls: L.cls, skin: L.skin, hs: L.hs, hair: L.hair, shirt: L.shirt }); setTimeout(() => { go.disabled = false; }, 2500); return; }

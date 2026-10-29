@@ -29,6 +29,8 @@
     spi: { name: 'Tinh thần', desc: '+4 mana tối đa, +0.3 giáp' }
   };
   const POINTS_PER_LEVEL = 3, ADV_LEVEL = 30;
+  /* mana regeneration per second (slower than before so skills cannot be spammed): 1 + 0.5% of max mana */
+  const mpRegenPerSec = (maxMp) => 1 + (maxMp || 0) * 0.005;
 
   /* ---------- skills ---------- */
   /* Damage skills have an entry of the same id in ATTACKS (reach, multiplier, cooldown, mana, cone). Support skills carry their own numbers. */
@@ -37,7 +39,7 @@
     spin: { name: 'Chém xoáy', desc: 'Quét quanh người' },
     dash: { name: 'Lao tới', desc: 'Lao về trước chém mọi thứ trên đường' },
     quake: { name: 'Chấn động', desc: 'Dậm đất, làm choáng quái xung quanh 1.5 giây' },
-    bulwark: { name: 'Giáp sắt', desc: 'Giảm 40% sát thương nhận trong 8 giây', support: { mp: 25, cd: 25 } },
+    bulwark: { name: 'Giáp sắt', desc: 'Giảm 40% sát thương nhận trong 8 giây', support: { mp: 30, cd: 25 } },
     fireball: { name: 'Cầu lửa', desc: 'Một quả cầu lửa sát thương lớn' },
     frost: { name: 'Băng giá', desc: 'Làm quái phía trước chậm 50% trong 4 giây' },
     thunder: { name: 'Sấm sét', desc: 'Sét đánh xung quanh, làm choáng ngắn' },
@@ -47,13 +49,13 @@
     stunshot: { name: 'Tên choáng', desc: 'Làm choáng mục tiêu 1.5 giây' },
     barrage: { name: 'Loạt tên', desc: 'Xả loạt tên cực mạnh về phía trước' },
     backstab: { name: 'Đâm lén', desc: 'Một nhát đâm sát thương cao' },
-    vanish: { name: 'Ẩn thân', desc: 'Quái mất dấu bạn trong 5 giây; đánh sẽ lộ diện', support: { mp: 20, cd: 20 } },
+    vanish: { name: 'Ẩn thân', desc: 'Quái mất dấu bạn trong 5 giây; đánh sẽ lộ diện', support: { mp: 26, cd: 20 } },
     flurry: { name: 'Loạt dao', desc: 'Phi dao quanh người' },
     execute: { name: 'Hạ sát', desc: 'Nhát chém kết liễu sát thương cực lớn' },
-    heal: { name: 'Chữa lành', desc: 'Hồi 30% máu cho bạn và đồng đội trong 14m', support: { mp: 20, cd: 6 } },
+    heal: { name: 'Chữa lành', desc: 'Hồi 30% máu cho bạn và đồng đội trong 14m', support: { mp: 28, cd: 6 } },
     holy: { name: 'Thánh quang', desc: 'Chùm sáng thánh sát thương lớn' },
-    bless: { name: 'Ban phước', desc: 'Bạn và đồng đội trong 14m tăng 15% sức đánh trong 12 giây', support: { mp: 25, cd: 30 } },
-    revive: { name: 'Hồi sinh', desc: 'Hồi sinh một đồng đội đã ngã trong 12m với 40% máu', support: { mp: 40, cd: 40 } }
+    bless: { name: 'Ban phước', desc: 'Bạn và đồng đội trong 14m tăng 15% sức đánh trong 12 giây', support: { mp: 35, cd: 30 } },
+    revive: { name: 'Hồi sinh', desc: 'Hồi sinh một đồng đội đã ngã trong 12m với 40% máu', support: { mp: 55, cd: 40 } }
   };
   /* balance pass (armory update): melee basics hit harder than ranged ones (ranged trade damage for safety), area and ultimate skills
      were raised so they are worth their mana, backstab was lowered a little. */
@@ -64,21 +66,21 @@
     bolt: { reach: 14, mult: [0.9, 1.0, 1.35], cd: 0.35, cos: 0.92 },
     arrow: { reach: 16, mult: [0.9, 1.0, 1.35], cd: 0.35, cos: 0.94 },
     smite: { reach: 10, mult: [0.95, 1.05, 1.4], cd: 0.35, cos: 0.9 },
-    spin: { reach: 3.4, mult: [1.9], cd: 4.6, mp: 15 },
-    dash: { reach: 7.5, mult: [1.7], cd: 3.6, mp: 10 },
-    quake: { reach: 4.5, mult: [1.8], cd: 9, mp: 20, cos: -2, stun: 1500 },
-    fireball: { reach: 15, mult: [2.2], cd: 3, mp: 12, cos: 0.93 },
-    frost: { reach: 10, mult: [1.6], cd: 7, mp: 18, cos: 0.5, slow: 4000 },
-    thunder: { reach: 8, mult: [1.9], cd: 10, mp: 24, cos: -2, stun: 800 },
-    meteor: { reach: 12, mult: [4.2], cd: 25, mp: 45, cos: -2 },
-    pierce: { reach: 18, mult: [2.2], cd: 4, mp: 12, cos: 0.97 },
-    volley: { reach: 8, mult: [1.8], cd: 8, mp: 20, cos: -2 },
-    stunshot: { reach: 14, mult: [1.4], cd: 10, mp: 15, cos: 0.9, stun: 1500 },
-    barrage: { reach: 16, mult: [3.8], cd: 22, mp: 40, cos: 0.6 },
-    backstab: { reach: 2.8, mult: [2.6], cd: 6, mp: 15, cos: 0.3 },
-    flurry: { reach: 3.2, mult: [2.0], cd: 8, mp: 18, cos: -2 },
-    execute: { reach: 3.0, mult: [4.5], cd: 20, mp: 35, cos: 0.3 },
-    holy: { reach: 12, mult: [2.2], cd: 5, mp: 14, cos: 0.9 }
+    spin: { reach: 3.4, mult: [1.9], cd: 4.6, mp: 18 },
+    dash: { reach: 7.5, mult: [1.7], cd: 3.6, mp: 14 },
+    quake: { reach: 4.5, mult: [1.8], cd: 9, mp: 28, cos: -2, stun: 1500 },
+    fireball: { reach: 15, mult: [2.2], cd: 3, mp: 20, cos: 0.93 },
+    frost: { reach: 10, mult: [1.6], cd: 7, mp: 26, cos: 0.5, slow: 4000 },
+    thunder: { reach: 8, mult: [1.9], cd: 10, mp: 34, cos: -2, stun: 800 },
+    meteor: { reach: 12, mult: [4.2], cd: 25, mp: 65, cos: -2 },
+    pierce: { reach: 18, mult: [2.2], cd: 4, mp: 18, cos: 0.97 },
+    volley: { reach: 8, mult: [1.8], cd: 8, mp: 28, cos: -2 },
+    stunshot: { reach: 14, mult: [1.4], cd: 10, mp: 22, cos: 0.9, stun: 1500 },
+    barrage: { reach: 16, mult: [3.8], cd: 22, mp: 55, cos: 0.6 },
+    backstab: { reach: 2.8, mult: [2.6], cd: 6, mp: 20, cos: 0.3 },
+    flurry: { reach: 3.2, mult: [2.0], cd: 8, mp: 26, cos: -2 },
+    execute: { reach: 3.0, mult: [4.5], cd: 20, mp: 45, cos: 0.3 },
+    holy: { reach: 12, mult: [2.2], cd: 5, mp: 20, cos: 0.9 }
   };
 
   /* ---------- classes (key 1-4 use the skills in order; each unlocks at its level) ---------- */
@@ -306,7 +308,7 @@
   };
   const REP_TIERS = [{ id: 'hostile', name: 'Thù địch', min: -99999 }, { id: 'neutral', name: 'Trung lập', min: 0 }, { id: 'friendly', name: 'Thân thiện', min: 500 }, { id: 'honored', name: 'Kính trọng', min: 2000 }, { id: 'exalted', name: 'Tôn kính', min: 6000 }];
 
-  const api = { expNeed, playerStats, pointsTotal, APPEARANCE, RACES, STATS, SKILLS, CLASSES, ADV, POINTS_PER_LEVEL, ADV_LEVEL,
+  const api = { expNeed, playerStats, pointsTotal, mpRegenPerSec, APPEARANCE, RACES, STATS, SKILLS, CLASSES, ADV, POINTS_PER_LEVEL, ADV_LEVEL,
     WORLD, ZONES, DUNGEON, ENEMIES, ATTACKS, QUESTS, MAX_LEVEL: 60, INV_SIZE: 42, POTION_CD: 8,
     MATS, PROFS, PROF_MAX, profNeed, NODES, MAT_DROPS, CONS, BUFF_NAME, RECIPES, forgeIlvl, MOUNTS, FACTIONS, REP_TIERS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.AF_RULES = api;

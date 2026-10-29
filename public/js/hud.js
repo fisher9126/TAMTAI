@@ -138,4 +138,47 @@
     lastKey = key;
   }
   setInterval(() => { if (H.isRunning()) sync(); }, 700);
+
+  /* ---------- one look for every panel: same frame, header, tabs, cards, buttons and inputs ---------- */
+  const P = '.afp,#afGR,#afUR,#afVR,#afZ,#afTR,#afChar,#afSoc,#afMap,#afQJ,#afQD,#friends';
+  const ux = document.createElement('style');
+  ux.textContent = `
+  :is(${P}){background:linear-gradient(180deg,rgba(24,18,14,.98),rgba(12,9,8,.98))!important;color:#e8dcc6!important;border:1px solid rgba(224,122,58,.4)!important;border-radius:10px!important;box-shadow:0 0 0 1px #000,0 30px 80px rgba(0,0,0,.75)!important;font:13.5px/1.5 Inter,system-ui,sans-serif!important;padding:16px 18px!important;scrollbar-width:thin;scrollbar-color:#7d3418 transparent}
+  :is(${P}) :is(h2,h3,.hd b,.afqT){font-family:'Cinzel','Times New Roman',serif!important;letter-spacing:.04em;color:#ffb066!important}
+  :is(${P}) h4,:is(${P}) .afq-h{color:#ffb066!important;font:800 11px system-ui,sans-serif!important;letter-spacing:.14em!important;text-transform:uppercase;margin:16px 0 8px!important;padding-bottom:4px;border-bottom:1px solid rgba(224,122,58,.18)}
+  :is(${P}) :is(.row,.box,.afit,.afq-row,.mat){background:rgba(255,255,255,.035)!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:8px!important;padding:9px 11px!important;margin:6px 0!important;transition:border-color .12s,background .12s}
+  :is(${P}) :is(.row,.box,.afit,.afq-row):hover{border-color:rgba(255,176,102,.35)!important;background:rgba(255,176,102,.05)!important}
+  :is(${P}) :is(.mut,.afq-mut,small.mut){color:#a89c8a!important}
+  :is(${P}) b{color:#fff1dc}
+  :is(${P}) button:not(.afqL):not([data-k]):not(.chip):not(.slot):not(.cell):not(.fcard){background:linear-gradient(180deg,#c4642c,#7d3418)!important;color:#fff1dc!important;border:1px solid #2a1206!important;border-radius:6px!important;padding:6px 12px!important;font:700 12.5px system-ui,sans-serif!important;box-shadow:0 2px 0 rgba(0,0,0,.4)!important;cursor:pointer;transition:filter .12s,transform .08s}
+  :is(${P}) button:not(.afqL):not([data-k]):hover{filter:brightness(1.15)}
+  :is(${P}) button:not(.afqL):not([data-k]):active{transform:translateY(1px)}
+  :is(${P}) button:is(.g,.af.g,.afq-btn.g){background:rgba(255,255,255,.07)!important;color:#e8dcc6!important;border-color:rgba(255,255,255,.14)!important}
+  :is(${P}) button:is(.on,.afq-btn.on,[aria-pressed=true]){background:linear-gradient(180deg,#ffd08a,#c8862c)!important;color:#2a1406!important}
+  :is(${P}) button[disabled]{opacity:.38!important;filter:grayscale(.6);cursor:default}
+  :is(${P}) :is(.tabs,#afTabs){display:flex;flex-wrap:wrap;gap:6px;padding:4px;border-radius:8px;background:rgba(0,0,0,.3);margin:8px 0!important}
+  :is(${P}) :is(input,select,textarea){background:#0e0b0a!important;color:#e8dcc6!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:6px!important;padding:6px 8px!important;font:13px system-ui,sans-serif!important}
+  :is(${P}) :is(input,select):focus{outline:2px solid #e07a3a;outline-offset:0}
+  :is(${P}) .bar{height:8px!important;border-radius:4px!important;background:rgba(0,0,0,.5)!important}
+  :is(${P}) .bar i{background:linear-gradient(90deg,#8a3a18,#e08a44)!important}
+  :is(${P}) .up{color:#7ddc8f!important}:is(${P}) .dn{color:#ff8f80!important}
+  :is(${P})::-webkit-scrollbar{width:8px}:is(${P})::-webkit-scrollbar-thumb{background:#7d3418;border-radius:4px}`;
+  document.head.appendChild(ux);
+
+  /* ---------- portrait: your hero's face and your account name ---------- */
+  const pcss = document.createElement('style');
+  pcss.textContent = '#hud .portrait.afFace{background-size:cover!important;background-position:center 30%!important;background-color:#2a2018!important}';
+  document.head.appendChild(pcss);
+  let faceKey = '';
+  function portrait() {
+    const X = window.AF_CHX, Dk = window.AF_DARK, I = window.AF_ICONS, C = window.AF_CLASS, el = document.querySelector('#hud .portrait');
+    const nm = document.querySelector('#hud .row1 span:first-child'), me = H.NET && H.NET.me;
+    if (nm && me && me.username && nm.textContent !== me.username) nm.textContent = me.username;
+    if (!el || !X || !Dk || !Dk.api || !Dk.ready || !I || !I.face || !C || !C.prof) return;
+    const pr = C.prof, eq = (X.P && X.P.eq) || {}, look = Dk.api.lookOf(pr.race, pr.gender, pr.app), gear = Dk.api.gearOf({ helmet: eq.helmet }, null);
+    const key = JSON.stringify([pr.cls, look, gear]); if (key === faceKey) return;
+    const url = I.face(key, () => Dk.api.hero(pr.cls, {}, null, 'common', look, gear)); if (!url) return;
+    faceKey = key; el.style.backgroundImage = 'url(' + url + ')'; el.classList.add('afFace');
+  }
+  setInterval(() => { if (H.isRunning()) try { portrait(); } catch (e) { /* ignore */ } }, 1500);
 })();

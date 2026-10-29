@@ -240,8 +240,9 @@
     const I = window.AF_ICONS, Dk = window.AF_DARK, pv = $L.querySelector('#afArmPv');
     if (I && I.preview && pv && Dk && Dk.api && Dk.ready) {
       const eq = p.eq || {}, w = eq.weapon, wt = w && w.type && IT.canUse(w, cls) ? w.type : null;
-      const key = [cls, wt, w && w.rarity, eq.helmet && eq.helmet.id, eq.cape && eq.cape.id].join('|');
-      I.preview(pv, key, () => Dk.api.hero(cls || 'warrior', eq, wt, w ? w.rarity : 'common'));
+      const pr = window.AF_CLASS && window.AF_CLASS.prof, ext = extSt().eq || {}, look = pr ? Dk.api.lookOf(pr.race, pr.gender, pr.app) : {}, gear = Dk.api.gearOf(eq, ext);
+      const key = JSON.stringify([cls, wt, w && w.rarity, gear, look]);
+      I.preview(pv, key, () => Dk.api.hero(cls || 'warrior', eq, wt, w ? w.rarity : 'common', look, gear));
     } else if (pv) pv.innerHTML = '<div class="em">' + svg(wn.weapon ? wn.weapon.icon : 'sword', '#ffb066') + '</div>';
   }
 
